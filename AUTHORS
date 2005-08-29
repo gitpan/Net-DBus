@@ -1,0 +1,14 @@
+    Net::DBus - Perl APIs for DBus
+    ==============================
+
+Net::DBus is written by 
+
+    Daniel Berrange <dan@berrange.com>
+
+With patches / contributions greatfully received from
+
+    Carlos Garnacho <carlosg@gnome.org>
+
+    [...send patches to get your name here!]
+
+-- End

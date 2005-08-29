@@ -1,0 +1,119 @@
+Net::DBus version 0.32.0
+========================
+
+Net::DBus provides a Perl XS API to the dbus inter-application
+messaging system. The Perl API covers the core base level 
+of the dbus APIs, not concerning itself yet with the GLib
+or QT wrappers. For more information on dbus visit the 
+project website at:
+
+  http://www.freedesktop.org/software/dbus/
+
+This version operates against DBus 0.32, and if there have
+been no serious API changes, later versions too.
+
+INSTALLATION
+------------
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   sudo make install
+
+If your dbus installation is not in the /usr prefix,
+the the argument DBUS_HOME must be used to specify
+the instllation prefix when generating the Makefile.
+For example, if dbus were initially configured and
+built with 'configure --prefix=$HOME/dbus-0.32' then
+the installation procedure for this Perl module would 
+be
+
+   perl Makefile.PL DBUS_HOME=$HOME/dbus-0.32
+   make
+   make test
+   make install
+
+The XS layer has the capability to output information
+about its operation on STDERR during normal operation.
+Due to its performance hit, this capability must be
+enabled when initially compiling the DBus module by
+specifying the 'PD_DEBUG=1' parameter:
+
+  perl Makefile.PL PD_DEBUG=1
+
+In addition, when running a program the environment
+variable PD_DEBUG must be set (to any value).
+
+DEPENDENCIES
+------------
+
+In keeping with the C API, the Perl DBus implementation
+has minimal external dependancies:
+
+  Test::More
+  Time::HiRes
+  XML::Grove
+  XML::Parser
+
+Both of these modules are present as standard in versions
+of Perl >= 5.8.0, while for earlier versions they may
+be obtained from CPAN (http://search.cpan.org/).
+
+EXAMPLES
+--------
+
+There are a number of example programs in the examples/
+subdirectory demonstrating use of the high level application
+developer APIs.
+
+  example-service.pl         - Providing a simple service
+  example-client.pl          - Talking to a remote service
+  example-signal-emitter.pl  - How to broadcast signals
+  example-signal-receiver.pl - How to receive signals
+  dump-object.pl             - Dump info about dbus objects
+
+
+CONTRIBUTIONS
+-------------
+
+Contributions both simple bug fixes & new features are
+always welcome. Please supply patches in context, or 
+unified diff format. A simple method to generate such a 
+patch is as follows:
+
+  * Clean out generated files from your working
+    directory:
+
+        make distclean
+
+  * Rename your working directory to have '-new' 
+    extension: 
+
+        mv DBus-0.32.0 DBus-0.32.0-new
+
+  * Extract a pristine copy of the source:
+
+        gunzip -c DBus-0.32.0.tar.gz | tar xf -
+        mv DBus-0.32.0 DBus-0.32.0-orig
+
+  * Generate the patch:
+
+        diff -ruN DBus-0.32.0-orig DBus-0.32.0-new \
+          > DBus-0.32.0-[something].patch
+        gzip DBus-0.32.0-[something].patch
+
+
+Send the resulting to .patch.gz file directly to 
+Daniel Berrange <dan at berrange dot com>
+
+COPYRIGHT AND LICENCE
+---------------------
+
+Copyright (C) 2004-2005 Daniel Berrange
+
+This library is provided under the terms of the GNU
+GPL 
+
+-- End

@@ -1,0 +1,11 @@
+pm_to_blib
+DBus-
+blib
+.*\.bak
+CVS
+.cvsignore
+.*~
+.#.*
+#.*
+^Makefile$
+^cover_db/

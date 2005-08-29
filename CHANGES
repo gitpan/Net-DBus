@@ -1,0 +1,36 @@
+
+Changes since 0.32.0
+
+ - The order of 'service_name' and 'bus' parameter to the
+   Net::DBus::Service constructor is reversed to match
+   that of Net::DBus::RemoteService
+
+ - The order of 'service' and 'object_path' parameter to the
+   Net::DBus::Object constructor is reversed to match
+   that of Net::DBus::RemoteObject
+
+ - No longer neccessary to construct an explicit Net::DBus::Service
+   object - one is constructed & returned by the 'export_service'
+   method on Net::DBus
+
+ - The 'find' method on Net::DBus will search for & attach to
+   a suitable bus, so no longer neccessary to hard code either
+   system or session bus
+
+ - Introspection data is no longer provided via the
+   Net::DBus::Object constructor. Consult the manual pages
+   for Net::DBus::OBject and Net::DBus::Exporter for details
+   of new approach to defining introspection data.
+
+ - The Net::DBus::Introspector class is no longer for public
+   use.
+
+ - The Net::DBus::Dumper class can be used to display a dump
+   of an object's exported API cf examples/dump-object.pl
+
+ - Signal handler callbacks now get the actual signal params
+   passed in, rather than low level bind info
+
+ - The Net::DBus objects are automatically registered with
+   the default reactor mainloop, unless 'nomainloop => 1'
+   is passed into constructor
