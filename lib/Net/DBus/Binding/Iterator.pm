@@ -1,3 +1,23 @@
+# -*- perl -*-
+#
+# Copyright (C) 2004-2005 Daniel P. Berrange
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# $Id: Iterator.pm,v 1.13 2005/10/23 16:31:15 dan Exp $
+
 =pod
 
 =head1 NAME
@@ -54,8 +74,6 @@ use warnings;
 use Carp qw(confess);
 
 use Net::DBus;
-
-our $VERSION = '0.0.1';
 
 our $have_quads = 0;
 
@@ -184,7 +202,11 @@ sub get {
 
 	my $actual = $self->get_arg_type;
 	if ($actual != $type) {
-	    die "requested type '$type' did not match wire type '$actual'";
+	    # "Be strict in what you send, be leniant in what you accept"
+	    #    - ie can't rely on python to send correct types, eg int32 vs uint32
+	    #die "requested type '" . chr($type) . "' ($type) did not match wire type '" . chr($actual) . "' ($actual)";
+	    warn "requested type '" . chr($type) . "' ($type) did not match wire type '" . chr($actual) . "' ($actual)";
+	    $type = $actual;
 	}
     } else {
 	$type = $self->get_arg_type;
@@ -335,8 +357,10 @@ sub append {
 	    $self->append_double($value);
 	} elsif ($type == &Net::DBus::Binding::Message::TYPE_OBJECT_PATH) {
 	    $self->append_string($value);
+	} elsif ($type == &Net::DBus::Binding::Message::TYPE_VARIANT) {
+	    $self->append_variant($value);
 	} else {
-	    $self->append_string($value);
+	    confess "Unsupported scalar type ", $type;
 	}
     }
 }
@@ -359,7 +383,7 @@ sub guess_type {
 	    die "cannot marshall reference of type " . ref($value);
 	}
     } else {
-	# XXX Should be bother trying to guess integer & floating point types ?
+	# XXX Should we bother trying to guess integer & floating point types ?
 	# I say sod it, because strongly typed languages will support introspection
 	# and loosely typed languages won't care about the difference
 	return &Net::DBus::Binding::Message::TYPE_STRING;
@@ -367,25 +391,26 @@ sub guess_type {
 }
 
 sub get_signature {
+    my $self = shift;
     my $type = shift;
     my ($sig, $t, $i);
 
     $sig = "";
     $i = 0;
 
-    if (ref ($type) eq "ARRAY") {
+    if (ref($type) eq "ARRAY") {
 	while ($i <= $#{$type}) {
 	    $t = $$type[$i];
 	    
-	    if (ref ($t) eq "ARRAY") {
-		$sig .= &get_signature ($t);
+	    if (ref($t) eq "ARRAY") {
+		$sig .= $self->get_signature($t);
 	    } elsif ($t == &Net::DBus::Binding::Message::TYPE_DICT_ENTRY) {
 		$sig .= chr (&Net::DBus::Binding::Message::TYPE_ARRAY);
-		$sig .= "{" . &get_signature ($$type[++$i]) . "}";
+		$sig .= "{" . $self->get_signature($$type[++$i]) . "}";
 	    } elsif ($t == &Net::DBus::Binding::Message::TYPE_STRUCT) {
-		$sig .= "(" . &get_signature ($$type[++$i]) . ")";
+		$sig .= "(" . $self->get_signature($$type[++$i]) . ")";
 	    } else {
-		$sig .= chr ($t);
+		$sig .= chr($t);
 	    }
 	    
 	    $i++;
@@ -406,7 +431,7 @@ sub append_array {
     die "array must only have one type"
 	if $#{$type} > 0;
 
-    my $sig = get_signature ($type);
+    my $sig = $self->get_signature($type);
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_ARRAY, $sig);
     
     foreach my $value (@{$array}) {
@@ -426,7 +451,7 @@ sub append_struct {
 	die "number of values does not match type";
     }
 
-    my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_STRUCT, undef);
+    my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_STRUCT, "");
     
     my @type = @{$type};
     foreach my $value (@{$struct}) {
@@ -444,7 +469,7 @@ sub append_dict {
     my $sig;
 
     $sig  = "{";
-    $sig .= get_signature ($type);
+    $sig .= $self->get_signature($type);
     $sig .= "}";
 
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_ARRAY, $sig);
@@ -459,6 +484,20 @@ sub append_dict {
     }
     $self->_close_container($iter);
 }
+
+
+sub append_variant {
+    my $self = shift;
+    my $value = shift;
+    
+    my $type = $self->guess_type($value);
+    my $sig = $self->get_signature($type);
+    my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_VARIANT, $sig);
+    $iter->append($value, $type);
+    $self->_close_container($iter);
+}
+
+
 
 1;
 

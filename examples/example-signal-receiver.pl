@@ -11,20 +11,21 @@ use Carp qw(confess cluck);
 my $bus = Net::DBus->session();
 
 my $service = $bus->get_service("org.designfu.TestService");
-my $object  = $service->get_object("/org/designfu/TestService/object");
+my $object  = $service->get_object("/org/designfu/TestService/object",
+				   "org.designfu.TestService");
 
 sub hello_signal_handler {
     my $greeting = shift;
     print "Received hello signal with greeting '$greeting'\n";
 }
 
-$object->connect_to_signal("hello", \&hello_signal_handler);
+$object->connect_to_signal("HelloSignal", \&hello_signal_handler);
 
 my $reactor = Net::DBus::Reactor->main();
 
 my $ticks = 0;
 $reactor->add_timeout(1000, Net::DBus::Callback->new(method => sub {
-    $object->emitHelloSignal("John Doe");
+    $object->emitHelloSignal();
     if ($ticks++ == 10) {
       $reactor->shutdown();
     }

@@ -1,3 +1,23 @@
+# -*- perl -*-
+#
+# Copyright (C) 2004-2005 Daniel P. Berrange
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# $Id: Exporter.pm,v 1.7 2005/10/15 13:31:42 dan Exp $
+
 =pod
 
 =head1 NAME
@@ -147,6 +167,30 @@ with the values orded to match the structure
 
 =back
 
+=head1 MAGIC TYPES
+
+When specifying introspection data for an exported service, there
+are a couple of so called C<magic> types. Parameters declared as
+magic types are not visible to clients, but instead their values
+are provided automatically by the server side bindings. One use of
+magic types is to get an extra parameter passed with the unique 
+name of the caller invoking the method.
+
+=over 4
+
+=item "caller"
+
+The value passed in is the unique name of the caller of the method.
+Unique names are strings automatically assigned to client connections
+by the bus daemon, for example ':1.15'
+
+=item "serial"
+
+The value passed in is an integer within the scope of a caller, which 
+increments on every method call. 
+
+=back
+
 =head1 METHODS
 
 =over 4
@@ -255,7 +299,7 @@ use warnings;
 require Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = qw(dbus_method dbus_signal);
+@EXPORT = qw(dbus_method dbus_signal dbus_property);
 
 
 sub import {
@@ -270,6 +314,7 @@ sub import {
     $dbus_exports{$caller} = {
 	methods => {},
 	signals => {},
+	props => {},
     };
     die "usage: use Net::DBus::Exporter 'interface-name';" unless @_;
 
@@ -333,6 +378,10 @@ sub _dbus_introspector_add {
 	    my ($params, $returns, $interface) = @{$exports->{methods}->{$method}};
 	    $introspector->add_method($method, $params, $returns, $interface);
 	}
+	foreach my $prop (keys %{$exports->{props}}) {
+	    my ($type, $access, $interface) = @{$exports->{props}->{$prop}};
+	    $introspector->add_property($prop, $type, $access, $interface);
+	}
 	foreach my $signal (keys %{$exports->{signals}}) {
 	    my ($params, $interface) = @{$exports->{signals}->{$signal}};
 	    $introspector->add_signal($signal, $params, $interface);
@@ -369,6 +418,29 @@ sub dbus_method {
     }
 	
     $is->{methods}->{$name} = [$params, $returns, $interface];
+}
+
+
+sub dbus_property {
+    my $name = shift;
+    my $type = shift;
+    my $access = shift;
+    
+    $access = "readwrite" unless defined $access;
+
+    my $caller = caller;
+    my $is = $dbus_exports{$caller};
+
+    my $interface;
+    if (@_) {
+	$interface = shift;
+    } elsif (!exists $is->{interface}) {
+	die "interface not specified & not default interface defined";
+    } else {
+	$interface = $is->{interface};
+    }
+	
+    $is->{props}->{$name} = [$type, $access, $interface];
 }
 
 

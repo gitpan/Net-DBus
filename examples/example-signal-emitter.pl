@@ -26,13 +26,12 @@ sub new {
     return $self;
 }
 
-dbus_signal("hello", ["string"]);
-dbus_method("emitHelloSignal", ["string"]);
+dbus_signal("HelloSignal", ["string"]);
+dbus_method("emitHelloSignal");
 sub emitHelloSignal {
     my $self = shift;
-    my $name = shift;
     print "Got request to send hello signal\n";
-    return $self->emit_signal("hello", "Hello " . $name);
+    return $self->emit_signal("HelloSignal", "Hello");
 }
 
 

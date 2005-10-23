@@ -1,3 +1,23 @@
+# -*- perl -*-
+#
+# Copyright (C) 2004-2005 Daniel P. Berrange
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# $Id: Introspector.pm,v 1.10 2005/10/17 22:28:01 dan Exp $
+
 =pod
 
   name => "org.foo.bar.Object"
@@ -39,6 +59,7 @@ our %simple_type_map = (
   "int64" => &Net::DBus::Binding::Message::TYPE_INT64,
   "uint64" => &Net::DBus::Binding::Message::TYPE_UINT64,
   "object" => &Net::DBus::Binding::Message::TYPE_OBJECT_PATH,
+  "variant" => &Net::DBus::Binding::Message::TYPE_VARIANT,
 );
 
 our %simple_type_rev_map = (
@@ -51,6 +72,20 @@ our %simple_type_rev_map = (
   &Net::DBus::Binding::Message::TYPE_INT64 => "int64",
   &Net::DBus::Binding::Message::TYPE_UINT64 => "uint64",
   &Net::DBus::Binding::Message::TYPE_OBJECT_PATH => "object",
+  &Net::DBus::Binding::Message::TYPE_VARIANT => "variant",
+);
+
+our %magic_type_map = (
+  "caller" => sub {
+    my $msg = shift;
+
+    return $msg->get_sender;
+  },
+  "serial" => sub {
+    my $msg = shift;
+
+    return $msg->get_serial;
+  },
 );
 
 our %compound_type_map = (
@@ -60,16 +95,12 @@ our %compound_type_map = (
 );
 
 
-our $VERSION = '0.0.1';
-
 sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
     my $self = {};
     my %params = @_;
 
-    $self->{methods} = {};
-    $self->{signals} = {};
     $self->{interfaces} = {};
 
     bless $self, $class;
@@ -82,19 +113,24 @@ sub new {
 	$self->_parse_node($params{node});
     } else {
 	$self->{object_path} = exists $params{object_path} ? $params{object_path} : die "object_path parameter is required";
-	$self->{interfaces} = exists $params{interfaces} ? $params{interfaces} : {};
+	$self->{interfaces} = $params{interfaces} if exists $params{interfaces};
 	$self->{children} = exists $params{children} ? $params{children} : [];
     }
 
-    foreach my $name (keys %{$self->{interfaces}}) {
-	my $interface = $self->{interfaces}->{$name};
-	foreach my $method (keys %{$interface->{methods}}) {
-	    $self->{methods}->{$method} = $interface->{methods}->{$method};
+    # XXX it is really a bug that these aren't included in the introspection
+    # data the bus generates
+    if ($self->{object_path} eq "/org/freedesktop/DBus") {
+	if (!$self->has_signal("NameOwnerChanged")) {
+	    $self->add_signal("NameOwnerChanged", ["string","string","string"], "org.freedesktop.DBus");
 	}
-	foreach my $signal (keys %{$interface->{signals}}) {
-	    $self->{signals}->{$signal} = $interface->{signals}->{$signal};
+	if (!$self->has_signal("NameLost")) {
+	    $self->add_signal("NameLost", ["string"], "org.freedesktop.DBus");
+	}
+	if (!$self->has_signal("NameAcquired")) {
+	    $self->add_signal("NameAcquired", ["string"], "org.freedesktop.DBus");
 	}
     }
+	
     
     return $self;
 }
@@ -106,6 +142,7 @@ sub add_interface {
     $self->{interfaces}->{$name} = {
 	methods => {},
 	signals => {},
+	props => {},
     } unless exists $self->{interfaces}->{$name};
 }
 
@@ -119,6 +156,7 @@ sub has_method {
 	    push @interfaces, $interface;
 	}
     }
+
     return @interfaces;
 }
 
@@ -136,6 +174,27 @@ sub has_signal {
 }
 
 
+sub has_property {
+    my $self = shift;
+    my $name = shift;
+    
+    if (@_) {
+	my $interface = shift;
+	return () unless exists $self->{interfaces}->{$interface};
+	return () unless exists $self->{interfaces}->{$interface}->{props}->{$name};
+	return ($interface);
+    } else {
+	my @interfaces;
+	foreach my $interface (keys %{$self->{interfaces}}) {
+	    if (exists $self->{interfaces}->{$interface}->{props}->{$name}) {
+		push @interfaces, $interface;
+	    }
+	}
+	return @interfaces;
+    }
+}
+
+
 sub add_method {
     my $self = shift;
     my $name = shift;
@@ -144,10 +203,10 @@ sub add_method {
     my $interface = shift;
 
     $self->add_interface($interface);
-
-    $self->{methods}->{$name} = { params => $params,
-				  returns => $returns };
-    $self->{interfaces}->{$interface}->{methods}->{$name} = $self->{methods}->{$name};
+    $self->{interfaces}->{$interface}->{methods}->{$name} = { 
+	params => $params,
+	returns => $returns,
+    };
 }
 
 sub add_signal {
@@ -157,9 +216,19 @@ sub add_signal {
     my $interface = shift;
 
     $self->add_interface($interface);
+    $self->{interfaces}->{$interface}->{signals}->{$name} = $params;
+}
 
-    $self->{signals}->{$name} = $params;
-    $self->{interfaces}->{$interface}->{signals}->{$name} = $self->{signals}->{$name};
+
+sub add_property {
+    my $self = shift;
+    my $name = shift;
+    my $type = shift;
+    my $access = shift;
+    my $interface = shift;
+
+    $self->add_interface($interface);
+    $self->{interfaces}->{$interface}->{props}->{$name} = [$type, $access];
 }
 
 
@@ -179,6 +248,12 @@ sub list_signals {
     my $self = shift;
     my $interface = shift;
     return keys %{$self->{interfaces}->{$interface}->{signals}};
+}
+
+sub list_properties {
+    my $self = shift;
+    my $interface = shift;
+    return keys %{$self->{interfaces}->{$interface}->{props}};
 }
 
 sub get_object_path {
@@ -208,6 +283,31 @@ sub get_signal_params {
 }
 
 
+sub get_property_type {
+    my $self = shift;
+    my $interface = shift;
+    my $prop = shift;
+    return $self->{interfaces}->{$interface}->{props}->{$prop}->[0];
+}
+
+
+sub is_property_readable {
+    my $self = shift;
+    my $interface = shift;
+    my $prop = shift;
+    my $access = $self->{interfaces}->{$interface}->{props}->{$prop}->[1];
+    return $access eq "readwrite" || $access eq "read" ? 1 : 0;
+}
+
+
+sub is_property_writable {
+    my $self = shift;
+    my $interface = shift;
+    my $prop = shift;
+    my $access = $self->{interfaces}->{$interface}->{props}->{$prop}->[1];
+    return $access eq "readwrite" || $access eq "write" ? 1 : 0;
+}
+
 
 sub _parse {
     my $self = shift;
@@ -227,7 +327,6 @@ sub _parse_node {
 
     $self->{object_path} = $node->{Attributes}->{name} if defined $node->{Attributes}->{name};
     die "no object path provided" unless defined $self->{object_path};
-    $self->{interfaces} = {};
     $self->{children} = [];
     foreach my $child (@{$node->{Contents}}) {
 	if (ref($child) eq "XML::Grove::Element" &&
@@ -253,6 +352,7 @@ sub _parse_interface {
     $self->{interfaces}->{$name} = {
 	methods => {},
 	signals => {},
+	props => {},
     };
     
     foreach my $child (@{$node->{Contents}}) {
@@ -262,6 +362,9 @@ sub _parse_interface {
 	} elsif (ref($child) eq "XML::Grove::Element" &&
 		 $child->{Name} eq "signal") {
 	    $self->_parse_signal($child, $name);
+	} elsif (ref($child) eq "XML::Grove::Element" &&
+		 $child->{Name} eq "property") {
+	    $self->_parse_property($child, $name);
 	}
     }
 }
@@ -283,7 +386,7 @@ sub _parse_method {
 	    
 	    my @sig = split //, $type;
 	    my @type = $self->_parse_type(\@sig);
-	    if ($direction eq "in") {
+	    if (!defined $direction || $direction eq "in") {
 		push @params, @type;
 	    } elsif ($direction eq "out") {
 		push @returns, @type;
@@ -369,6 +472,19 @@ sub _parse_signal {
 	\@params;
 }
 
+sub _parse_property {
+    my $self = shift;
+    my $node = shift;
+    my $interface = shift;
+    
+    my $name = $node->{Attributes}->{name};
+    my $access = $node->{Attributes}->{access};
+    
+    $self->{interfaces}->{$interface}->{props}->{$name} = 
+	[ $self->_parse_type([$node->{Attributes}->{type}]),
+	  $access ];
+}
+
 sub format {
     my $self = shift;
     
@@ -393,10 +509,12 @@ sub to_xml {
 	    $xml .= $indent . '    <method name="' . $mname . '">' . "\n";
 	    
 	    foreach my $type (@{$method->{params}}) {
+		next if ! ref($type) && exists $magic_type_map{$type};
 		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '" direction="in"/>' . "\n";
 	    }
 	    
 	    foreach my $type (@{$method->{returns}}) {
+		next if ! ref($type) && exists $magic_type_map{$type};
 		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '" direction="out"/>' . "\n";
 	    }
 	    	    
@@ -407,16 +525,24 @@ sub to_xml {
 	    $xml .= $indent . '    <signal name="' . $sname . '">' . "\n";
 	    
 	    foreach my $type (@{$signal}) {
+		next if ! ref($type) && exists $magic_type_map{$type};
 		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '"/>' . "\n";
 	    }
 	    $xml .= $indent . '    </signal>' . "\n";
+	}
+	    
+	foreach my $pname (sort { $a cmp $b } keys %{$interface->{props}}) {
+	    my $type = $interface->{props}->{$pname}->[0];
+	    my $access = $interface->{props}->{$pname}->[1];
+	    $xml .= $indent . '    <property name="' . $pname . '" type="' . 
+		$self->to_xml_type($type) . '" access="' . $access . '"/>' . "\n";
 	}
 	    
 	$xml .= $indent . '  </interface>' . "\n";
     }
 
     foreach my $child (@{$self->{children}}) {
-	if (ref($child) eq "Net::DBus::Introspector") {
+	if (ref($child) eq __PACKAGE__) {
 	    $xml .= $child->to_xml($indent . "  ");
 	} else {
 	    $xml .= $indent . '  <node name="' . $child . '"/>' . "\n";
@@ -464,6 +590,7 @@ sub to_xml_type {
     return $sig;
 }
 
+
 sub encode {
     my $self = shift;
     my $message = shift;
@@ -472,12 +599,27 @@ sub encode {
     my $direction = shift;
     my @args = @_;
 
-    die "no introspection data for $name (type: $type) in object " . $self->get_object_path . "\n" 
-	unless exists $self->{$type}->{$name};
+    my $interface = $message->get_interface;
+
+    if ($interface) {
+	die "no interface '$interface' in introspection data for object '" . $self->get_object_path . "' encoding $type '$name'\n"
+	    unless exists $self->{interfaces}->{$interface};
+	die "no introspection data when encoding $type '$name' in object " . $self->get_object_path . "\n" 
+	    unless exists $self->{interfaces}->{$interface}->{$type}->{$name};
+    } else {
+	foreach my $in (keys %{$self->{interfaces}}) {
+	    if (exists $self->{interfaces}->{$in}->{$type}->{$name}) {
+		$interface = $in;
+	    }
+	}
+	if (!$interface) {
+	    die "no interface in introspection data for object " . $self->get_object_path . " encoding $type '$name'\n" 
+	}
+    }
 
     my @types = $type eq "signals" ? 
-	@{$self->{$type}->{$name}} :
-	@{$self->{$type}->{$name}->{$direction}};
+	@{$self->{interfaces}->{$interface}->{$type}->{$name}} :
+	@{$self->{interfaces}->{$interface}->{$type}->{$name}->{$direction}};
     
     # If you don't explicitly 'return ()' from methods, Perl
     # will always return a single element representing the
@@ -513,6 +655,8 @@ sub convert {
 	    die "unknown compound type " . $in->[0] unless
 		exists $compound_type_map{lc $in->[0]};
 	    push @out, [$compound_type_map{lc $in->[0]}, \@subout];
+	} elsif (exists $magic_type_map{lc $in}) {
+	    push @out, $magic_type_map{lc $in};
 	} else {
 	    die "unknown simple type " . $in unless
 		exists $simple_type_map{lc $in};
@@ -522,6 +666,7 @@ sub convert {
     return @out;
 }
 
+
 sub decode {
     my $self = shift;
     my $message = shift;
@@ -529,29 +674,48 @@ sub decode {
     my $name = shift;
     my $direction = shift;
     my @args = @_;
-    
-    die "no introspection data for such $name ($type)" unless exists $self->{$type}->{$name};
-    
+
+    my $interface = $message->get_interface;
+
+    if ($interface) {
+	die "no interface '$interface' in introspection data for object '" . $self->get_object_path . "' decoding $type '$name'\n"
+	    unless exists $self->{interfaces}->{$interface};
+	die "no introspection data when encoding $type '$name' in object " . $self->get_object_path . "\n" 
+	    unless exists $self->{interfaces}->{$interface}->{$type}->{$name};
+    } else {
+	foreach my $in (keys %{$self->{interfaces}}) {
+	    if (exists $self->{interfaces}->{$in}->{$type}->{$name}) {
+		$interface = $in;
+	    }
+	}
+	if (!$interface) {
+	    die "no interface in introspection data for object " . $self->get_object_path . " decoding $type '$name'\n" 
+	}
+    }
+
     my @types = $type eq "signals" ? 
-	@{$self->{$type}->{$name}} :
-	@{$self->{$type}->{$name}->{$direction}};
+	@{$self->{interfaces}->{$interface}->{$type}->{$name}} :
+	@{$self->{interfaces}->{$interface}->{$type}->{$name}->{$direction}};
 
-
+    # If there are no types defined, just return the
+    # actual data from the message, assuming the introspection
+    # data was partial.
+    return $message->get_args_list 
+	unless @types;
 
     my $iter = $message->iterator;
     
-    if ($iter->get_arg_type() == &Net::DBus::Binding::Message::TYPE_INVALID) {
-	return ();
-    }
-    
-    # XXX validate received message against instrospection data!
     my @rawtypes = $self->convert(@types);
     my @ret;
     do {
-	my $rawtype = shift @rawtypes;
 	my $type = shift @types;
-	push @ret, $iter->get($rawtype);
+	my $rawtype = shift @rawtypes;
+	
+	if (exists $magic_type_map{$type}) {
+	    push @ret, &$rawtype($message);
+	} else {
+	    push @ret, $iter->get($rawtype);
+	}
     } while ($iter->next);
-
     return @ret;
 }

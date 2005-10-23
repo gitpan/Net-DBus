@@ -5,7 +5,7 @@ use strict;
 use warnings;
 
 BEGIN { 
-    use_ok('Net::DBus::Introspector');
+    use_ok('Net::DBus::Binding::Introspector');
     use_ok('Net::DBus::Object');
 };
 
@@ -24,6 +24,18 @@ my $xml_expect = <<EOF;
       <arg type="s" direction="out"/>
     </method>
   </interface>
+  <interface name="org.freedesktop.DBus.Properties">
+    <method name="Get">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="v" direction="out"/>
+    </method>
+    <method name="Set">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="v" direction="in"/>
+    </method>
+  </interface>
 </node>
 EOF
     
@@ -36,50 +48,11 @@ sub new {
     my $class = shift;
     my $self = {};
     
-    $self->{bus} = DummyBus->new();
-
     bless $self, $class;
     
     return $self;
 }
 
-sub get_bus {
+sub _register_object {
     my $self = shift;
-    return $self->{bus};
-}
-
-package DummyBus;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-    
-    $self->{connection} = DummyConnection->new();
-
-    bless $self, $class;
-    
-    return $self;
-}
-
-sub get_connection {
-    my $self = shift;
-    return $self->{connection};
-}
-
-
-package DummyConnection;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-
-    bless $self, $class;
-
-    return $self;
-}
-
-
-sub register_object_path {
-    my $self = shift;
-    # nada
 }

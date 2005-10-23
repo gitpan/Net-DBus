@@ -8,17 +8,19 @@
 %define perlversion %(perl -e 'use Config; print $Config{version}')
 %define appname Net-DBus
 
+%define _extra_release %{?extra_release:%{extra_release}}
+
 Summary: Perl API to the DBus message system
 Name: perl-%{appname}
-Version: 0.32.1
-Release: 1
-Copyright: GPL/Artistic
+Version: 0.32.2
+Release: 1%{_extra_release}
+License: GPL
 Group: Applications/Internet
 Source: %{appname}-%{version}.tar.gz
 BuildRoot: /var/tmp/%{appname}-%{version}-root
 #BuildArchitectures: noarch
 Requires: perl = %{perlversion}
-Requires: dbus = 0.32
+Requires: dbus >= 0.32
 
 %description
 Provides a Perl API to the DBus message system
@@ -39,7 +41,8 @@ make
 %install
 rm -rf $RPM_BUILD_ROOT
 make install INSTALLVENDORMAN3DIR=$RPM_BUILD_ROOT%{perlvendorman3}
-find $RPM_BUILD_ROOT%{perlvendorarch} -name perllocal.pod -exec rm -f {} \;
+find $RPM_BUILD_ROOT -name perllocal.pod -exec rm -f {} \;
+find $RPM_BUILD_ROOT -name .packlist -exec rm -f {} \;
 
 %clean
 rm -rf $RPM_BUILD_ROOT

@@ -1,4 +1,48 @@
 
+Changes since 0.32.1
+
+ - Fix unit tests broken in previous build
+
+ - Added patch to avoid leaking memory when throwing dbus
+   errors from the XS layer
+
+ - Added support for org.freedesktop.DBus.Properties
+   in exported & remote objects.
+
+ - Added support for getting the unique name of the client's
+   connection to the bus
+
+ - Added support for getting the unique name of the client
+   owning a service on the bus
+
+ - RemoteService object constructor gains an extra parameter
+   for the owner of the service at the time it was aquired to
+   deal with issues where a service is replaced.
+
+ - Cache RemoteService objects to avoid creating multiple
+   instances for the same service name.
+
+ - Fix caching of objects by the service to avoid caching
+   objects cast to a specific interface
+
+ - Make add_signal_receiver method on Net::DBus private
+
+ - Use introspection data for hinting only, not absolute truth
+   since Python bindings don't provide complete data.
+
+ - Adding correct handling for (de)marshalling variant data
+   type to fix interaction with python bindings
+
+ - Added magic 'caller' and 'serial' data types for requesting
+   that data about method caller be passed into a method
+
+ - Lots more POD documentation
+
+ - Added 'lshal.pl' demo script for listing HAL devices
+
+ - Made example scripts interoperate correctly with example
+   scripts from Python & GLib bindings
+
 Changes since 0.32.0
 
  - The order of 'service_name' and 'bus' parameter to the

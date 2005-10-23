@@ -1,3 +1,23 @@
+# -*- perl -*-
+#
+# Copyright (C) 2004-2005 Daniel P. Berrange
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# $Id: Message.pm,v 1.10 2005/10/15 13:31:42 dan Exp $
+
 =pod
 
 =head1 NAME
@@ -44,8 +64,6 @@ use Net::DBus::Binding::Message::Signal;
 use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Message::MethodReturn;
 use Net::DBus::Binding::Message::Error;
-
-our $VERSION = '0.0.1';
 
 sub new {
     my $proto = shift;
@@ -112,12 +130,27 @@ sub get_sender {
     return $self->{message}->dbus_message_get_sender;
 }
 
+sub get_serial {
+    my $self = shift;
+    
+    return $self->{message}->dbus_message_get_serial;
+}
+
 sub get_member {
     my $self = shift;
     
     return $self->{message}->dbus_message_get_member;
 }
 
+sub set_sender {
+    my $self = shift;
+    $self->{message}->dbus_message_set_sender(@_);
+}
+
+sub set_destination {
+    my $self = shift;
+    $self->{message}->dbus_message_set_destination(@_);
+}
 
 =pod
 

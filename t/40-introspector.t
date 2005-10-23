@@ -5,12 +5,12 @@ use strict;
 use warnings;
 
 BEGIN { 
-        use_ok('Net::DBus::Introspector');
+        use_ok('Net::DBus::Binding::Introspector');
 	};
 
 
 TEST_ONE: {
-    my $other_object = Net::DBus::Introspector->new(
+    my $other_object = Net::DBus::Binding::Introspector->new(
 						    object_path => "org.example.Object.OtherObject",
 						    interfaces => {
 							"org.example.SomeInterface" => {
@@ -26,11 +26,16 @@ TEST_ONE: {
 							    },
 							    signals => {
 								"meltdown" => ["int32", "byte"],
-							    }
+							    },
+							    props => {
+								"name" => ["string", "readwrite"],
+								"email" => ["string", "read"],
+								"age" => ["int32", "read"],
+							    },
 							}
 						    });
 
-    isa_ok($other_object, "Net::DBus::Introspector");
+    isa_ok($other_object, "Net::DBus::Binding::Introspector");
     
     my $other_xml_got = $other_object->format();
     
@@ -54,12 +59,15 @@ TEST_ONE: {
       <arg type="i"/>
       <arg type="y"/>
     </signal>
+    <property name="age" type="i" access="read"/>
+    <property name="email" type="s" access="read"/>
+    <property name="name" type="s" access="readwrite"/>
   </interface>
 </node>
 EOF
     is($other_xml_got, $other_xml_expect, "xml data matches");
 
-    my $object = Net::DBus::Introspector->new(
+    my $object = Net::DBus::Binding::Introspector->new(
 					      object_path => "org.example.Object",
 					      interfaces => {
 						  "org.example.SomeInterface" => {
@@ -83,7 +91,11 @@ EOF
 							     params => ["int32", "uint32"],
 							     return => [],
 							 }
-						     }
+						     },
+						     props => {
+							 "title" => ["string", "readwrite"],
+							 "salary" => ["int32", "read"],
+						     },
 						 },
 					      },
 					      children => [
@@ -91,7 +103,7 @@ EOF
 							   $other_object,
 							   ]);
     
-    isa_ok($object, "Net::DBus::Introspector");
+    isa_ok($object, "Net::DBus::Binding::Introspector");
 
     my $object_xml_got = $object->format();
     
@@ -104,6 +116,8 @@ EOF
       <arg type="i" direction="in"/>
       <arg type="u" direction="in"/>
     </method>
+    <property name="salary" type="i" access="read"/>
+    <property name="title" type="s" access="readwrite"/>
   </interface>
   <interface name="org.example.SomeInterface">
     <method name="goodbye">
@@ -140,6 +154,9 @@ EOF
         <arg type="i"/>
         <arg type="y"/>
       </signal>
+      <property name="age" type="i" access="read"/>
+      <property name="email" type="s" access="read"/>
+      <property name="name" type="s" access="readwrite"/>
     </interface>
   </node>
 </node>
@@ -147,7 +164,7 @@ EOF
     is($object_xml_got, $object_xml_expect, "xml data matches");
     
     
-    my $recon_other = Net::DBus::Introspector->new(xml => $object_xml_got);
+    my $recon_other = Net::DBus::Binding::Introspector->new(xml => $object_xml_got);
     
     my $object_xml_got_again = $recon_other->format();
     

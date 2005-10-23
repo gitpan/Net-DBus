@@ -2,11 +2,6 @@ AUTHORS
 CHANGES
 COPYING
 DBus.xs
-MANIFEST			This list of files
-MANIFEST.SKIP
-Makefile.PL
-Net-DBus.spec.PL
-README
 examples/dump-object.pl
 examples/example-client-no-introspect.pl
 examples/example-client.pl
@@ -14,6 +9,7 @@ examples/example-service-no-introspect.pl
 examples/example-service.pl
 examples/example-signal-emitter.pl
 examples/example-signal-receiver.pl
+examples/lshal.pl
 lib/Net/DBus.pm
 lib/Net/DBus/Binding/Bus.pm
 lib/Net/DBus/Binding/Connection.pm
@@ -25,7 +21,6 @@ lib/Net/DBus/Binding/Message/MethodCall.pm
 lib/Net/DBus/Binding/Message/MethodReturn.pm
 lib/Net/DBus/Binding/Message/Signal.pm
 lib/Net/DBus/Binding/Server.pm
-lib/Net/DBus/Binding/Value.pm
 lib/Net/DBus/Binding/Watch.pm
 lib/Net/DBus/Callback.pm
 lib/Net/DBus/Dumper.pm
@@ -35,6 +30,15 @@ lib/Net/DBus/Reactor.pm
 lib/Net/DBus/RemoteObject.pm
 lib/Net/DBus/RemoteService.pm
 lib/Net/DBus/Service.pm
+lib/Net/DBus/Tutorial.pm
+lib/Net/DBus/Tutorial/ExportingObjects.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+META.yml
+Net-DBus.spec
+Net-DBus.spec.PL
+README
 rollingbuild.sh
 t/00-constants.t
 t/15-message.t
@@ -43,5 +47,7 @@ t/25-reactor.t
 t/30-server.t
 t/40-introspector.t
 t/50-object-introspect.t
+t/60-object-props.t
+t/65-object-magic.t
 typemap
 Net-DBus.spec

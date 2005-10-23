@@ -1,3 +1,23 @@
+/* -*- c -*-
+ *
+ * Copyright (C) 2004-2005 Daniel P. Berrange
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * $Id: DBus.xs,v 1.16 2005/10/15 14:21:47 dan Exp $
+ */
 
 #include "EXTERN.h"
 #include "perl.h"
@@ -20,7 +40,7 @@ dbus_int32_t server_data_slot = -1;
 
 void
 _object_release(void *obj) {
-    PD_DEBUG("Releasing object count on %x\n", obj);
+    PD_DEBUG("Releasing object count on %p\n", obj);
     SvREFCNT_dec((SV*)obj);
 }
 
@@ -29,11 +49,10 @@ _watch_generic(DBusWatch *watch, void *data, char *key, dbus_bool_t server) {
     SV *selfref;
     HV *self;
     SV **call;
-    SV *h_sv1;
-    SV *h_sv2;
+    SV *h_sv;
     dSP;
 
-    PD_DEBUG("Watch generic callback %x %x %s %d\n", watch, data, key, server);
+    PD_DEBUG("Watch generic callback %p %p %s %d\n", watch, data, key, server);
 
     if (server) {
       selfref = (SV*)dbus_server_get_data((DBusServer*)data, server_data_slot);
@@ -42,7 +61,7 @@ _watch_generic(DBusWatch *watch, void *data, char *key, dbus_bool_t server) {
     }
     self = (HV*)SvRV(selfref);
 
-    PD_DEBUG("Got owner %x\n", self);
+    PD_DEBUG("Got owner %p\n", self);
 
     call = hv_fetch(self, key, strlen(key), 0);
 
@@ -57,15 +76,17 @@ _watch_generic(DBusWatch *watch, void *data, char *key, dbus_bool_t server) {
 
     PUSHMARK(SP);
     XPUSHs(selfref);
-    h_sv2 = sv_newmortal();
-    sv_setref_pv(h_sv2, "Net::DBus::Binding::C::Watch", (void*)watch);
-    XPUSHs(h_sv2);
+    h_sv = sv_newmortal();
+    sv_setref_pv(h_sv, "Net::DBus::Binding::C::Watch", (void*)watch);
+    XPUSHs(h_sv);
     PUTBACK;
 
     call_sv(*call, G_DISCARD);
 
     FREETMPS;
     LEAVE;
+
+    return 1;
 }
 
 dbus_bool_t
@@ -100,8 +121,7 @@ _timeout_generic(DBusTimeout *timeout, void *data, char *key, dbus_bool_t server
     SV *selfref;
     HV *self;
     SV **call;
-    SV *h_sv1;
-    SV *h_sv2;
+    SV *h_sv;
     dSP;
 
     if (server) {
@@ -123,15 +143,17 @@ _timeout_generic(DBusTimeout *timeout, void *data, char *key, dbus_bool_t server
 
     PUSHMARK(SP);
     XPUSHs((SV*)selfref);
-    h_sv2 = sv_newmortal();
-    sv_setref_pv(h_sv2, "Net::DBus::Binding::C::Timeout", (void*)timeout);
-    XPUSHs(h_sv2);
+    h_sv = sv_newmortal();
+    sv_setref_pv(h_sv, "Net::DBus::Binding::C::Timeout", (void*)timeout);
+    XPUSHs(h_sv);
     PUTBACK;
 
     call_sv(*call, G_DISCARD);
 
     FREETMPS;
     LEAVE;
+
+    return 1;
 }
 
 dbus_bool_t
@@ -167,10 +189,7 @@ _connection_callback (DBusServer *server,
     SV *selfref = (SV*)dbus_server_get_data((DBusServer*)data, server_data_slot);
     HV *self = (HV*)SvRV(selfref);
     SV **call;
-    SV *proto;
-    SV *name;
     SV *value;
-    SV *h_sv;
     dSP;
 
     call = hv_fetch(self, "_callback", strlen("_callback"), 0);
@@ -180,7 +199,7 @@ _connection_callback (DBusServer *server,
       return;
     }
 
-    PD_DEBUG("Created connection in callback %x\n", new_connection);
+    PD_DEBUG("Created connection in callback %p\n", new_connection);
     /* The DESTROY method will de-ref it later */
     dbus_connection_ref(new_connection);
 
@@ -216,7 +235,7 @@ _message_filter(DBusConnection *con,
     selfref = (SV*)dbus_connection_get_data(con, connection_data_slot);
     self = (HV*)SvRV(selfref);
 
-    PD_DEBUG("Create message in filter %x\n", msg);
+    PD_DEBUG("Create message in filter %p\n", msg);
     PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
     PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
     PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -269,7 +288,7 @@ _path_message_callback(DBusConnection *con,
     SV *value;
     dSP;
 
-    PD_DEBUG("Got message in callback %x\n", msg);
+    PD_DEBUG("Got message in callback %p\n", msg);
     PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
     PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
     PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -291,6 +310,8 @@ _path_message_callback(DBusConnection *con,
 
     FREETMPS;
     LEAVE;
+
+    return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 DBusObjectPathVTable _path_callback_vtable = {
@@ -301,6 +322,41 @@ DBusObjectPathVTable _path_callback_vtable = {
         NULL,
         NULL
 };
+
+SV *
+_sv_from_error (DBusError *error)
+{
+    HV *hv;
+
+    if (!error) {
+      warn ("error is NULL");
+      return &PL_sv_undef;
+    }
+    
+    if (!dbus_error_is_set (error)) {
+      warn ("error is unset");
+      return &PL_sv_undef;
+    }
+    
+    hv = newHV ();
+    
+    /* map DBusError attributes to hash keys */
+    hv_store (hv, "name", 4, newSVpv (error->name, 0), 0);
+    hv_store (hv, "message", 7, newSVpv (error->message, 0), 0);
+    
+    return sv_bless (newRV_noinc ((SV*) hv), gv_stashpv ("Net::DBus::Error", TRUE));
+}
+
+void
+_croak_error (DBusError *error)
+{
+    sv_setsv (ERRSV, _sv_from_error (error));
+    
+    /* croak does not return, so we free this now to avoid leaking */
+    dbus_error_free (error);
+    
+    croak (Nullch);
+}
 
 void
 _populate_constant(HV *href, char *name, int val)
@@ -368,14 +424,11 @@ _open(address)
     PREINIT:
         DBusError error;
         DBusConnection *con;
-        SV *h_sv;
     CODE:
         dbus_error_init(&error);
         con = dbus_connection_open(address, &error);
         if (!con) {
-          // XXX fixme
-          //dbus_error_free(&error);
-          croak(error.message);
+          _croak_error (&error);
         }
         RETVAL = con;
     OUTPUT:
@@ -428,15 +481,13 @@ _send_with_reply_and_block(con, msg, timeout)
         int timeout;
     PREINIT:
         DBusMessage *reply;
-        DBusMessageIter *iter;
         DBusError error;
-        SV *h_sv;
     CODE:
         dbus_error_init(&error);
         if (!(reply = dbus_connection_send_with_reply_and_block(con, msg, timeout, &error))) {
-          croak(error.message);
+          _croak_error(&error);
         }
-        PD_DEBUG("Create msg reply %x\n", reply);
+        PD_DEBUG("Create msg reply %p\n", reply);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(reply));
         PD_DEBUG("  Interface %s\n", dbus_message_get_interface(reply) ? dbus_message_get_interface(reply) : "");
         PD_DEBUG("  Path %s\n", dbus_message_get_path(reply) ? dbus_message_get_path(reply) : "");
@@ -524,7 +575,7 @@ dbus_bus_register(con)
     CODE:
         dbus_error_init(&error);
         if (!(reply = dbus_bus_register(con, &error))) {
-          croak(error.message);
+          _croak_error(&error);
         }
         RETVAL = reply;
 
@@ -539,9 +590,26 @@ dbus_bus_add_match(con, rule)
 	PD_DEBUG("Adding match %s\n", rule);
         dbus_bus_add_match(con, rule, &error);
 	if (dbus_error_is_set(&error)) {
-	  croak("cannot add match %s", error.message);
+	  _croak_error(&error);
  	}
 
+void
+dbus_bus_remove_match(con, rule)
+        DBusConnection *con;
+        char *rule;
+    PREINIT:
+        DBusError error;
+    CODE:
+        dbus_error_init(&error);
+	PD_DEBUG("Removeing match %s\n", rule);
+        dbus_bus_remove_match(con, rule, &error);
+	if (dbus_error_is_set(&error)) {
+	  _croak_error(&error);
+ 	}
+
+const char *
+dbus_bus_get_unique_name(con)
+	DBusConnection *con;
 
 int
 dbus_bus_request_name(con, service_name)
@@ -553,7 +621,7 @@ dbus_bus_request_name(con, service_name)
     CODE:
         dbus_error_init(&error);
         if (!(reply = dbus_bus_request_name(con, service_name, 0, &error))) {
-          croak(error.message);
+          _croak_error(&error);
         }
         RETVAL = reply;
 
@@ -561,11 +629,10 @@ void
 DESTROY(con)
         DBusConnection *con;
    CODE:
-        PD_DEBUG("Destroying connection %x\n", con);
-        if (dbus_connection_get_is_connected(con)) {
-          dbus_connection_disconnect(con);
-        }
-        dbus_connection_unref(con);
+        PD_DEBUG("Destroying connection %p\n", con);
+        dbus_connection_disconnect(con);
+        // XXX do we need this or not ?
+        //dbus_connection_unref(con);
 
 
 MODULE = Net::DBus::Binding::Server		PACKAGE = Net::DBus::Binding::Server
@@ -578,15 +645,12 @@ _open(address)
     PREINIT:
         DBusError error;
         DBusServer *server;
-        SV *h_sv;
     CODE:
         dbus_error_init(&error);
         server = dbus_server_listen(address, &error);
-        PD_DEBUG("Created server %x on address %s", server, address);
+        PD_DEBUG("Created server %p on address %s", server, address);
         if (!server) {
-          // XXX fixme
-          //dbus_error_free(&error);
-          croak(error.message);
+          _croak_error(&error);
         }
         if (!dbus_server_set_auth_mechanisms(server, NULL)) {
             croak("not enough memory to server auth mechanisms");
@@ -652,7 +716,7 @@ void
 DESTROY(server)
         DBusServer *server;
    CODE:
-        PD_DEBUG("Destroying server %x\n", server);
+        PD_DEBUG("Destroying server %p\n", server);
         dbus_server_unref(server);
 
 
@@ -666,14 +730,11 @@ _open(type)
     PREINIT:
         DBusError error;
         DBusConnection *con;
-        SV *h_sv;
     CODE:
         dbus_error_init(&error);
         con = dbus_bus_get(type, &error);
         if (!con) {
-          // XXX fixme
-          //dbus_error_free(error);
-          croak(error.message);
+          _croak_error(&error);
         }
         RETVAL = con;
     OUTPUT:
@@ -688,13 +749,12 @@ _create(type)
         IV type;
     PREINIT:
         DBusMessage *msg;
-        SV *h_sv;
     CODE:
         msg = dbus_message_new(type);
         if (!msg) {
           croak("No memory to allocate message");
         }
-        PD_DEBUG("Create msg new %x\n", msg);
+        PD_DEBUG("Create msg new %p\n", msg);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
         RETVAL = msg;
     OUTPUT:
@@ -735,7 +795,7 @@ void
 DESTROY(msg)
         DBusMessage *msg;
     CODE:
-        PD_DEBUG("De-referencing message %x\n", msg);
+        PD_DEBUG("De-referencing message %p\n", msg);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
         PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
         PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -762,9 +822,23 @@ const char *
 dbus_message_get_sender(msg)
 	DBusMessage *msg;
 
+dbus_uint32_t
+dbus_message_get_serial(msg)
+	DBusMessage *msg;
+
 const char *
 dbus_message_get_member(msg)
 	DBusMessage *msg;
+
+void
+dbus_message_set_sender(msg, sender);
+	DBusMessage *msg;
+        const char *sender;
+
+void
+dbus_message_set_destination(msg, dest);
+	DBusMessage *msg;
+        const char *dest;
 
 MODULE = Net::DBus::Binding::Message::Signal		PACKAGE = Net::DBus::Binding::Message::Signal
 
@@ -777,13 +851,12 @@ _create(path, interface, name)
         char *name;
     PREINIT:
         DBusMessage *msg;
-        SV *h_sv;
     CODE:
         msg = dbus_message_new_signal(path, interface, name);
         if (!msg) {
           croak("No memory to allocate message");
         }
-        PD_DEBUG("Create msg new signal %x\n", msg);
+        PD_DEBUG("Create msg new signal %p\n", msg);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
         PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
         PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -804,13 +877,12 @@ _create(service, path, interface, method)
         char *method;
     PREINIT:
         DBusMessage *msg;
-        SV *h_sv;
     CODE:
         msg = dbus_message_new_method_call(service, path, interface, method);
         if (!msg) {
           croak("No memory to allocate message");
         }
-        PD_DEBUG("Create msg new method call %x\n", msg);
+        PD_DEBUG("Create msg new method call %p\n", msg);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
         PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
         PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -828,13 +900,15 @@ _create(call)
         DBusMessage *call;
     PREINIT:
         DBusMessage *msg;
-        SV *h_sv;
     CODE:
         msg = dbus_message_new_method_return(call);
         if (!msg) {
           croak("No memory to allocate message");
         }
-        PD_DEBUG("Create msg new method return %x\n", msg);
+        dbus_message_set_interface(msg, dbus_message_get_interface(call));
+        dbus_message_set_path(msg, dbus_message_get_path(call));
+        dbus_message_set_member(msg, dbus_message_get_member(call));
+        PD_DEBUG("Create msg new method return %p\n", msg);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
         PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
         PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -854,13 +928,12 @@ _create(replyto, name, message)
         char *message;
     PREINIT:
         DBusMessage *msg;
-        SV *h_sv;
     CODE:
         msg = dbus_message_new_error(replyto, name, message);
         if (!msg) {
           croak("No memory to allocate message");
         }
-        PD_DEBUG("Create msg new error %x\n", msg);
+        PD_DEBUG("Create msg new error %p\n", msg);
         PD_DEBUG("  Type %d\n", dbus_message_get_type(msg));
         PD_DEBUG("  Interface %s\n", dbus_message_get_interface(msg) ? dbus_message_get_interface(msg) : "");
         PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
@@ -901,7 +974,7 @@ handle(watch, flags)
         DBusWatch *watch;
         unsigned int flags;
     CODE:
-        PD_DEBUG("Handling event %d on fd %d (%x)\n", flags, dbus_watch_get_fd(watch), watch);
+        PD_DEBUG("Handling event %d on fd %d (%p)\n", flags, dbus_watch_get_fd(watch), watch);
         dbus_watch_handle(watch, flags);
 
 
@@ -943,7 +1016,7 @@ void
 handle(timeout)
         DBusTimeout *timeout;
     CODE:
-        PD_DEBUG("Handling timeout event %x\n", timeout);
+        PD_DEBUG("Handling timeout event %p\n", timeout);
         dbus_timeout_handle(timeout);
 
 void *
@@ -1165,7 +1238,7 @@ void
 DESTROY(iter)
         DBusMessageIter *iter;
     CODE:
-        PD_DEBUG("Destroying iterator %x\n", iter);
+        PD_DEBUG("Destroying iterator %p\n", iter);
         dbus_free(iter);
 
 MODULE = Net::DBus		PACKAGE = Net::DBus

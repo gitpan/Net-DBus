@@ -1,3 +1,25 @@
+# -*- perl -*-
+#
+# Copyright (C) 2004-2005 Daniel P. Berrange
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# $Id: DBus.pm,v 1.19 2005/10/23 16:34:12 dan Exp $
+
+=pod
+
 =head1 NAME
 
 DBus - Perl extension for the DBus message system
@@ -21,16 +43,16 @@ DBus - Perl extension for the DBus message system
 
   ######## Accessing remote services #########
 
-  # Get the service known by 'org.freedesktop.DBus'
-  my $service = $bus->get_service("org.freedesktop.DBus");
+  # Get a handle to the HAL service
+  my $hal = $bus->get_service("org.freedesktop.Hal");
+  
+  # Get the device manager
+  my $manager = $hal->get_object("/org/freedesktop/Hal/Manager", 
+                                 "org.freedesktop.Hal.Manager");
 
-  # See if SkyPE is around
-  if ($bus->has_service("com.skype.API")) { 
-      my $skype = $bus->get_service("com.skype.API");
-      ... do stuff with skype ...
-  } else {
-      print STDERR "SkyPE does not appear to be running\n";
-      exit 1
+  # List devices
+  foreach my $dev (@{$manager->GetAllDevices}) {
+      print $dev, "\n";
   }
 
   
@@ -70,16 +92,16 @@ use Carp;
 
 
 BEGIN {
-    our $VERSION = '0.32.1';
+    our $VERSION = '0.32.2';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
 
 use Net::DBus::Binding::Bus;
-use Net::DBus::Binding::Message;
-use Net::DBus::Binding::Value;
 use Net::DBus::Service;
 use Net::DBus::RemoteService;
+
+use vars qw($bus_system $bus_session);
 
 =pod
 
@@ -140,7 +162,10 @@ attached to the main L<Net::DBus::Reactor> event loop.
 
 sub system {
     my $class = shift;
-    return $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SYSTEM), @_);
+    unless ($bus_system) {
+	$bus_system = $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SYSTEM), @_);
+    }
+    return $bus_system
 }
 
 =pod
@@ -157,7 +182,10 @@ attached to the main L<Net::DBus::Reactor> event loop.
 
 sub session {
     my $class = shift;
-    return $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SESSION), @_);
+    unless ($bus_session) {
+	$bus_session = $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SESSION), @_);
+    }
+    return $bus_session;
 }
 
 =pod
@@ -187,7 +215,8 @@ sub _new {
     my $self = {};
     
     $self->{connection} = shift;
-    $self->{signals} = {};
+    $self->{signals} = [];
+    $self->{services} = {};
     
     my %params = @_;
     
@@ -202,9 +231,13 @@ sub _new {
     }
     
     $self->get_connection->add_filter(sub { $self->_signal_func(@_) });
+
+    # XXX is it ok to fix '1:0' as the owner of this ?
+    $self->{bus} = Net::DBus::RemoteService->new($self, ":1.0", "org.freedesktop.DBus");
     
     return $self;
 }
+
 
 =pod
 
@@ -237,33 +270,23 @@ sub get_service {
     my $self = shift;
     my $name = shift;
     
-    return Net::DBus::RemoteService->new($self, $name);
-}
-
-=pod
-
-=item my $bool = $bus->has_service($name);
-
-Returns a true value if the bus has an active service
-with a name of C<$name>. Returns a false value, if it
-does not. NB services can disappear from the bus at
-any time, so be prepared to handle failure at a later
-time, even if this method returns true.
-
-=cut
-
-sub has_service {
-    my $self = shift;
-    my $name = shift;
-    
-    my $dbus = $self->get_service("org.freedesktop.DBus");
-    my $bus = $dbus->get_object("/org/freedesktop/DBus");
-    my $services = $bus->ListNames;
-    
-    foreach (@{$services}) {
-	return 1 if $_ eq $name;
+    if ($name eq "org.freedesktop.DBus") {
+	return $self->{bus};
     }
-    return 0;
+
+    my $owner = $name;
+    if ($owner !~ /^:/) {
+	$owner = $self->get_service_owner($name);
+	if (!$owner) {
+	    $self->get_bus_object->StartServiceByName($name, 0);
+	    $owner = $self->get_service_owner($name);
+	}
+    }
+
+    unless (exists $self->{services}->{$owner}) {
+	$self->{services}->{$owner} = Net::DBus::RemoteService->new($self, $owner, $name);
+    }
+    return $self->{services}->{$owner};
 }
 
 
@@ -283,7 +306,70 @@ sub export_service {
     return Net::DBus::Service->new($self, $name);
 }
 
-sub add_signal_receiver {
+=pod
+
+=item my $object = $bus->get_bus_object;
+
+Retrieves a handle to the bus object, C</org/freedesktop/DBus>,
+provided by the service C<org.freedesktop.DBus>. The returned
+object is an instance of L<Net::DBus::RemoteObject>
+
+=cut
+
+sub get_bus_object {
+    my $self = shift;
+    
+    my $service = $self->get_service("org.freedesktop.DBus");
+    return $service->get_object('/org/freedesktop/DBus',
+				'org.freedesktop.DBus');
+}
+
+
+=pod
+
+=item my $name = $bus->get_unique_name;
+
+Retrieves the unique name of this client's connection to
+the bus.
+
+=cut
+
+sub get_unique_name {
+    my $self = shift;
+    
+    return $self->get_connection->get_unique_name
+}
+
+=pod
+
+=item my $name = $bus->get_service_owner($service);
+
+Retrieves the unique name of the client on the bus owning
+the service named by the C<$service> parameter.
+
+=cut
+
+sub get_service_owner {
+    my $self = shift;
+    my $service = shift;
+
+    my $bus = $self->get_bus_object;
+    my $owner = eval {
+	$bus->GetNameOwner($service);
+    };
+    if ($@) {
+	if (UNIVERSAL::isa($@, "Net::DBus::Error") &&
+	    $@->{name} eq "org.freedesktop.DBus.Error.NameHasNoOwner") {
+	    $owner = undef;
+	} else {
+	    die $@;
+	}
+    }
+    return $owner;
+}
+
+
+sub _add_signal_receiver {
     my $self = shift;
     my $receiver = shift;
     my $signal_name = shift;
@@ -293,13 +379,11 @@ sub add_signal_receiver {
 
     my $rule = $self->_match_rule($signal_name, $interface, $service, $path);
 
-    $self->{receivers}->{$rule} = [] unless $self->{receivers}->{$rule};
-    push @{$self->{receivers}->{$rule}}, $receiver;
-    
+    push @{$self->{signals}}, [$receiver, $rule, $signal_name, $interface, $service, $path];    
     $self->{connection}->add_match($rule);
 }
 
-sub remove_signal_receiver {
+sub _remove_signal_receiver {
     my $self = shift;
     my $receiver = shift;
     my $signal_name = shift;
@@ -309,15 +393,17 @@ sub remove_signal_receiver {
     
     my $rule = $self->_match_rule($signal_name, $interface, $service, $path);
 
-    my @receivers;
-    foreach (@{$self->{receivers}->{$rule}}) {
-	if ($_ eq $receiver) {
+    my @signals;
+    foreach (@{$self->{signals}}) {
+	if ($_->[0] eq $receiver &&
+	    defined $_->[1] &&
+	    $_->[1] eq $rule) {
 	    $self->{connection}->remove_match($rule);
 	} else {
-	    push @receivers, $_;
+	    push @signals, $_;
 	}
     }
-    $self->{receivers}->{$rule} = \@receivers;
+    $self->{signals} = \@signals;
 }
 
 
@@ -333,14 +419,13 @@ sub _match_rule {
 	$rule .= ",interface='$interface'";
     }
     if ($service) {
-	if ($service !~ /^:/ &&
-	    $service ne "org.freedesktop.DBus") {
-	    my $bus_service = $self->get_service("org.freedesktop.DBus");
-	    my $bus_object = $bus_service->get_object('/org/freedesktop/DBus',
-						      'org.freedesktop.DBus');
-	    $service = $bus_object->GetNameOwner($service);
+	if ($service !~ /^:/) {
+	    # Resolve service name to a client id
+	    $service = $self->get_service_owner($service);
 	}
-	$rule .= ",sender='$service'";
+	if ($service) {
+	    $rule .= ",sender='$service'";
+	}
     }
     if ($path) {
 	$rule .= ",path='$path'";
@@ -366,6 +451,7 @@ sub _rule_matches {
 	    $bits{$1} = $2;
 	}
     } split /,/, $rule;
+
     
     if (exists $bits{member} &&
 	$bits{member} ne $member) {
@@ -399,19 +485,16 @@ sub _signal_func {
     my $member = $message->get_member;
 
     my $handled = 0;
-    foreach my $rule (grep { $self->_rule_matches($_, $member, $interface, $sender, $path) }
-		      keys %{$self->{receivers}}) {
-	foreach my $callback (@{$self->{receivers}->{$rule}}) {
-	    &$callback($message);
-            $handled = 1;
-	}
+    foreach my $handler (grep { defined $_->[1] && 
+				$self->_rule_matches($_->[1], $member, $interface, $sender, $path) }
+			 @{$self->{signals}}) {
+	my $callback = $handler->[0];
+	&$callback($message);
+	$handled = 1;
     }
 
     return $handled;
 }
-
-1;
-__END__
 
 =pod
 
@@ -430,9 +513,26 @@ Daniel Berrange <dan@berrange.com>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2004 by Daniel Berrange
+Copyright 2004-2005 by Daniel Berrange
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 
 
 =cut
+
+1;
+
+package Net::DBus::Error;
+
+use overload ('""' => 'stringify');
+
+sub stringify {
+    my $self = shift;
+    
+    return $self->{name} . ": " . $self->{message};
+}
+    
+
+1;
+
+

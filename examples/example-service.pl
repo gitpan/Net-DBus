@@ -13,6 +13,12 @@ package SomeObject;
 use base qw(Net::DBus::Object);
 use Net::DBus::Exporter qw(org.designfu.SampleInterface);
 
+#use Class::MethodMaker [ scalar => [ qw(name email age) ]];
+
+#dbus_property("name", "string");
+#dbus_property("email", "string", "read");
+#dbus_property("age", "int32", "write");
+
 sub new {
     my $class = shift;
     my $service = shift;
@@ -35,14 +41,14 @@ dbus_method("GetDict", [], [["dict", "string", "string"]]);
 sub GetDict {
     my $self = shift;
     print "Do get dict\n";
-    return {"first" => "Hello Dict", "second" => " from example-service.py"};
+    return {"first" => "Hello Dict", "second" => " from example-service.pl"};
 }
 
 dbus_method("GetTuple", [], [["struct", "string", "string"]]);
 sub GetTuple {
     my $self = shift;
     print "Do get tuple\n";
-    return ["Hello Tuple", " from example-service.py"];
+    return ["Hello Tuple", " from example-service.pl"];
 }
 
 package main;

@@ -1,9 +1,9 @@
 #/usr/bin/perl
 
 use Net::DBus;
-use Carp qw(cluck carp);
+use Carp qw(cluck carp confess);
 #$SIG{__WARN__} = sub { cluck $_[0] };
-#$SIG{__DIE__} = sub { carp $_[0] };
+#$SIG{__DIE__} = sub { confess "[". $_[0] ."]"};
 
 my $bus = Net::DBus->find();
 
@@ -21,3 +21,12 @@ print "(", join(", ", map { "'$_'" } @{$tuple}), ")\n";
 my $dict = $object->GetDict();
 
 print "{", join(", ", map { "'$_': '" . $dict->{$_} . "'"} keys %{$dict}), "}\n";
+
+if (0) {
+    $object->name("John Doe");
+    $object->age(21);
+#$object->email('john.doe@example.com');
+    
+    print $object->name, " ", " ", $object->email, "\n";
+
+}
