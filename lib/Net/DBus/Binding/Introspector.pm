@@ -16,24 +16,37 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Introspector.pm,v 1.10 2005/10/17 22:28:01 dan Exp $
+# $Id: Introspector.pm,v 1.11 2005/11/21 11:36:12 dan Exp $
 
 =pod
 
-  name => "org.foo.bar.Object"
-  interfaces => 
-    "org.foo.bar.Wibble" => { 
-      methods => {
-        foo => {
-          params => ["int32", "double", ["array", "int32"]],
-          return => ["string", "byte", ["dict", "string", "variant"]]
-        }
-      }
-    }
-  }
-  children => [
-      introspector...
-  ];
+=head1 NAME
+
+Net::DBus::Introspector - handling of object introspection data
+
+=head1 SYNOPSIS
+
+  # Create an object populating with info from an
+  # XML doc containing introspection data.
+
+  my $ins = Net::DBus::Binding::Introspector->new(xml => $data);
+
+  # Create an object, defining introspection data
+  # programmatically
+  my $ins = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
+  $ins->add_method("DoSomething", ["string"], [], "org.example.MyObject");
+  $ins->add_method("TestSomething", ["int32"], [], "org.example.MyObject");
+
+=head1 DESCRIPTION
+
+This class is responsible for managing introspection data, and
+answering questions about it. This is not intended for use by 
+application developers, whom should instead consult the higher
+level API in L<Net::DBus::Exporter>
+
+=head1 METHODS
+
+=over 4
 
 =cut
 
@@ -146,6 +159,13 @@ sub add_interface {
     } unless exists $self->{interfaces}->{$name};
 }
 
+sub has_interface {
+    my $self = shift;
+    my $name = shift;
+    
+    return exists $self->{interfaces}->{$name} ? 1 : 0;
+}
+
 sub has_method {
     my $self = shift;
     my $name = shift;
@@ -201,11 +221,14 @@ sub add_method {
     my $params = shift;
     my $returns = shift;
     my $interface = shift;
+    my $attributes = shift;
 
     $self->add_interface($interface);
     $self->{interfaces}->{$interface}->{methods}->{$name} = { 
 	params => $params,
 	returns => $returns,
+	deprecated => $attributes->{deprecated} ? 1 : 0,
+	no_reply => $attributes->{no_return} ? 1 : 0,
     };
 }
 
@@ -214,9 +237,13 @@ sub add_signal {
     my $name = shift;
     my $params = shift;
     my $interface = shift;
+    my $attributes = shift;
 
     $self->add_interface($interface);
-    $self->{interfaces}->{$interface}->{signals}->{$name} = $params;
+    $self->{interfaces}->{$interface}->{signals}->{$name} = {
+	params => $params,
+	deprecated => $attributes->{deprecated} ? 1 : 0,
+    };
 }
 
 
@@ -226,9 +253,61 @@ sub add_property {
     my $type = shift;
     my $access = shift;
     my $interface = shift;
+    my $attributes = shift;
 
     $self->add_interface($interface);
-    $self->{interfaces}->{$interface}->{props}->{$name} = [$type, $access];
+    $self->{interfaces}->{$interface}->{props}->{$name} = {
+	type => $type, 
+	access => $access,
+	deprecated => $attributes->{deprecated} ? 1 : 0,
+    };
+}
+
+sub is_method_deprecated {
+    my $self = shift;
+    my $name = shift;
+    my $interface = shift;
+    
+    die "no interface $interface" unless exists $self->{interfaces}->{$interface};
+    die "no method $name in interface $interface" unless exists $self->{interfaces}->{$interface}->{methods}->{$name};
+    return 1 if $self->{interfaces}->{$interface}->{methods}->{$name}->{deprecated};
+    return 0;
+}
+
+
+sub is_signal_deprecated {
+    my $self = shift;
+    my $name = shift;
+    my $interface = shift;
+    
+    die "no interface $interface" unless exists $self->{interfaces}->{$interface};
+    die "no signal $name in interface $interface" unless exists $self->{interfaces}->{$interface}->{signals}->{$name};
+    return 1 if $self->{interfaces}->{$interface}->{signals}->{$name}->{deprecated};
+    return 0;
+}
+
+
+sub is_property_deprecated {
+    my $self = shift;
+    my $name = shift;
+    my $interface = shift;
+    
+    die "no interface $interface" unless exists $self->{interfaces}->{$interface};
+    die "no property $name in interface $interface" unless exists $self->{interfaces}->{$interface}->{props}->{$name};
+    return 1 if $self->{interfaces}->{$interface}->{props}->{$name}->{deprecated};
+    return 0;
+}
+
+
+sub does_method_reply {
+    my $self = shift;
+    my $name = shift;
+    my $interface = shift;
+
+    die "no interface $interface" unless exists $self->{interfaces}->{$interface};
+    die "no method $name in interface $interface" unless exists $self->{interfaces}->{$interface}->{methods}->{$name};
+    return 0 if $self->{interfaces}->{$interface}->{methods}->{$name}->{no_reply};
+    return 1;
 }
 
 
@@ -279,7 +358,7 @@ sub get_signal_params {
     my $self = shift;
     my $interface = shift;
     my $signal = shift;
-    return @{$self->{interfaces}->{$interface}->{signals}->{$signal}};
+    return @{$self->{interfaces}->{$interface}->{signals}->{$signal}->{params}};
 }
 
 
@@ -287,7 +366,7 @@ sub get_property_type {
     my $self = shift;
     my $interface = shift;
     my $prop = shift;
-    return $self->{interfaces}->{$interface}->{props}->{$prop}->[0];
+    return $self->{interfaces}->{$interface}->{props}->{$prop}->{type};
 }
 
 
@@ -295,7 +374,7 @@ sub is_property_readable {
     my $self = shift;
     my $interface = shift;
     my $prop = shift;
-    my $access = $self->{interfaces}->{$interface}->{props}->{$prop}->[1];
+    my $access = $self->{interfaces}->{$interface}->{props}->{$prop}->{access};
     return $access eq "readwrite" || $access eq "read" ? 1 : 0;
 }
 
@@ -304,7 +383,7 @@ sub is_property_writable {
     my $self = shift;
     my $interface = shift;
     my $prop = shift;
-    my $access = $self->{interfaces}->{$interface}->{props}->{$prop}->[1];
+    my $access = $self->{interfaces}->{$interface}->{props}->{$prop}->{access};
     return $access eq "readwrite" || $access eq "write" ? 1 : 0;
 }
 
@@ -329,16 +408,16 @@ sub _parse_node {
     die "no object path provided" unless defined $self->{object_path};
     $self->{children} = [];
     foreach my $child (@{$node->{Contents}}) {
-	if (ref($child) eq "XML::Grove::Element" &&
-	    $child->{Name} eq "interface") {
-	    $self->_parse_interface($child);
-	} elsif (ref($child) eq "XML::Grove::Element" &&
-		 $child->{Name} eq "node") {
-	    my $subcont = $child->{Contents};
-	    if ($#{$subcont} == -1) {
-		push @{$self->{children}}, $child->{Attributes}->{name};
-	    } else {
-		push @{$self->{children}}, $self->new(node => $child);
+	if (ref($child) eq "XML::Grove::Element") {
+	    if ($child->{Name} eq "interface") {
+		$self->_parse_interface($child);
+	    } elsif ($child->{Name} eq "node") {
+		my $subcont = $child->{Contents};
+		if ($#{$subcont} == -1) {
+		    push @{$self->{children}}, $child->{Attributes}->{name};
+		} else {
+		    push @{$self->{children}}, $self->new(node => $child);
+		}
 	    }
 	}
     }
@@ -356,15 +435,14 @@ sub _parse_interface {
     };
     
     foreach my $child (@{$node->{Contents}}) {
-	if (ref($child) eq "XML::Grove::Element" &&
-	    $child->{Name} eq "method") {
-	    $self->_parse_method($child, $name);
-	} elsif (ref($child) eq "XML::Grove::Element" &&
-		 $child->{Name} eq "signal") {
-	    $self->_parse_signal($child, $name);
-	} elsif (ref($child) eq "XML::Grove::Element" &&
-		 $child->{Name} eq "property") {
-	    $self->_parse_property($child, $name);
+	if (ref($child) eq "XML::Grove::Element") {
+	    if ($child->{Name} eq "method") {
+		$self->_parse_method($child, $name);
+	    } elsif ($child->{Name} eq "signal") {
+		$self->_parse_signal($child, $name);
+	    } elsif ($child->{Name} eq "property") {
+		$self->_parse_property($child, $name);
+	    }
 	}
     }
 }
@@ -378,18 +456,30 @@ sub _parse_method {
     my $name = $node->{Attributes}->{name};
     my @params;
     my @returns;
+    my $deprecated = 0;
+    my $no_reply = 0;
     foreach my $child (@{$node->{Contents}}) {
-	if (ref($child) eq "XML::Grove::Element" &&
-	    $child->{Name} eq "arg") {
-	    my $type = $child->{Attributes}->{type};
-	    my $direction = $child->{Attributes}->{direction};
-	    
-	    my @sig = split //, $type;
-	    my @type = $self->_parse_type(\@sig);
-	    if (!defined $direction || $direction eq "in") {
-		push @params, @type;
-	    } elsif ($direction eq "out") {
-		push @returns, @type;
+	if (ref($child) eq "XML::Grove::Element") {
+	    if ($child->{Name} eq "arg") {
+		my $type = $child->{Attributes}->{type};
+		my $direction = $child->{Attributes}->{direction};
+		
+		my @sig = split //, $type;
+		my @type = $self->_parse_type(\@sig);
+		if (!defined $direction || $direction eq "in") {
+		    push @params, @type;
+		} elsif ($direction eq "out") {
+		    push @returns, @type;
+		}
+	    } elsif ($child->{Name} eq "annotation") {
+		my $name = $child->{Attributes}->{name};
+		my $value = $child->{Attributes}->{value};
+		
+		if ($name eq "org.freedesktop.DBus.Deprecated") {
+		    $deprecated = 1 if lc($value) eq "true";
+		} elsif ($name eq "org.freedesktop.DBus.Method.NoReply") {
+		    $no_reply = 1 if lc($value) eq "true";
+		}
 	    }
 	}
     }
@@ -397,6 +487,8 @@ sub _parse_method {
     $self->{interfaces}->{$interface}->{methods}->{$name} = {
 	params => \@params,
 	returns => \@returns,
+	no_reply => $no_reply,
+	deprecated => $deprecated,
     }
 }
 
@@ -458,18 +550,29 @@ sub _parse_signal {
     
     my $name = $node->{Attributes}->{name};
     my @params;
+    my $deprecated = 0;
     foreach my $child (@{$node->{Contents}}) {
-	if (ref($child) eq "XML::Grove::Element" &&
-	    $child->{Name} eq "arg") {
-	    my $type = $child->{Attributes}->{type};
-	    my @sig = split //, $type;
-	    my @type = $self->_parse_type(\@sig);
-	    push @params, @type;
+	if (ref($child) eq "XML::Grove::Element") {
+	    if ($child->{Name} eq "arg") {
+		my $type = $child->{Attributes}->{type};
+		my @sig = split //, $type;
+		my @type = $self->_parse_type(\@sig);
+		push @params, @type;
+	    } elsif ($child->{Name} eq "annotation") {
+		my $name = $child->{Attributes}->{name};
+		my $value = $child->{Attributes}->{value};
+		
+		if ($name eq "org.freedesktop.DBus.Deprecated") {
+		    $deprecated = 1 if lc($value) eq "true";
+		}
+	    }
 	}
     }
     
-    $self->{interfaces}->{$interface}->{signals}->{$name} = 
-	\@params;
+    $self->{interfaces}->{$interface}->{signals}->{$name} = {
+	params => \@params,
+	deprecated => $deprecated,
+    };
 }
 
 sub _parse_property {
@@ -479,10 +582,25 @@ sub _parse_property {
     
     my $name = $node->{Attributes}->{name};
     my $access = $node->{Attributes}->{access};
+    my $deprecated = 0;
     
-    $self->{interfaces}->{$interface}->{props}->{$name} = 
-	[ $self->_parse_type([$node->{Attributes}->{type}]),
-	  $access ];
+    foreach my $child (@{$node->{Contents}}) {
+	if (ref($child) eq "XML::Grove::Element") {
+	    if ($child->{Name} eq "annotation") {
+		my $name = $child->{Attributes}->{name};
+		my $value = $child->{Attributes}->{value};
+		
+		if ($name eq "org.freedesktop.DBus.Deprecated") {
+		    $deprecated = 1 if lc($value) eq "true";
+		}
+	    }
+	}
+    }
+    $self->{interfaces}->{$interface}->{props}->{$name} = { 
+	type =>  $self->_parse_type([$node->{Attributes}->{type}]),
+	access => $access,
+	deprecated => $deprecated,
+    };
 }
 
 sub format {
@@ -517,25 +635,41 @@ sub to_xml {
 		next if ! ref($type) && exists $magic_type_map{$type};
 		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '" direction="out"/>' . "\n";
 	    }
-	    	    
+	    if ($method->{deprecated}) {
+		$xml .= $indent . '      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>' . "\n";
+	    }
+	    if ($method->{no_reply}) {
+		$xml .= $indent . '      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>' . "\n";
+	    }
 	    $xml .= $indent . '    </method>' . "\n";
 	}
 	foreach my $sname (sort { $a cmp $b } keys %{$interface->{signals}}) {
 	    my $signal = $interface->{signals}->{$sname};
 	    $xml .= $indent . '    <signal name="' . $sname . '">' . "\n";
 	    
-	    foreach my $type (@{$signal}) {
+	    foreach my $type (@{$signal->{params}}) {
 		next if ! ref($type) && exists $magic_type_map{$type};
 		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '"/>' . "\n";
+	    }
+	    if ($signal->{deprecated}) {
+		$xml .= $indent . '      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>' . "\n";
 	    }
 	    $xml .= $indent . '    </signal>' . "\n";
 	}
 	    
 	foreach my $pname (sort { $a cmp $b } keys %{$interface->{props}}) {
-	    my $type = $interface->{props}->{$pname}->[0];
-	    my $access = $interface->{props}->{$pname}->[1];
-	    $xml .= $indent . '    <property name="' . $pname . '" type="' . 
-		$self->to_xml_type($type) . '" access="' . $access . '"/>' . "\n";
+	    my $prop = $interface->{props}->{$pname};
+	    my $type = $interface->{props}->{$pname}->{type};
+	    my $access = $interface->{props}->{$pname}->{access};
+	    if ($prop->{deprecated}) {
+		$xml .= $indent . '    <property name="' . $pname . '" type="' . 
+		    $self->to_xml_type($type) . '" access="' . $access . '">' . "\n";
+		$xml .= $indent . '      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>' . "\n";
+		$xml .= $indent . '    </property>' . "\n";
+	    } else {
+		$xml .= $indent . '    <property name="' . $pname . '" type="' . 
+		    $self->to_xml_type($type) . '" access="' . $access . '"/>' . "\n";
+	    }
 	}
 	    
 	$xml .= $indent . '  </interface>' . "\n";
@@ -617,8 +751,7 @@ sub encode {
 	}
     }
 
-    my @types = $type eq "signals" ? 
-	@{$self->{interfaces}->{$interface}->{$type}->{$name}} :
+    my @types =
 	@{$self->{interfaces}->{$interface}->{$type}->{$name}->{$direction}};
     
     # If you don't explicitly 'return ()' from methods, Perl
@@ -693,8 +826,7 @@ sub decode {
 	}
     }
 
-    my @types = $type eq "signals" ? 
-	@{$self->{interfaces}->{$interface}->{$type}->{$name}} :
+    my @types = 
 	@{$self->{interfaces}->{$interface}->{$type}->{$name}->{$direction}};
 
     # If there are no types defined, just return the
@@ -719,3 +851,23 @@ sub decode {
     } while ($iter->next);
     return @ret;
 }
+
+1;
+
+=pod
+
+=back
+
+=head1 SEE ALSO
+
+L<Net::DBus::Exporter>, L<Net::DBus::Binding::Message>
+
+=head1 AUTHOR
+
+Daniel Berrange E<lt>dan@berrange.comE<gt>
+
+=head1 COPYRIGHT
+
+Copyright 2004 by Daniel Berrange
+
+=cut

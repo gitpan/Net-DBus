@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: DBus.pm,v 1.19 2005/10/23 16:34:12 dan Exp $
+# $Id: DBus.pm,v 1.21 2005/11/21 12:47:59 dan Exp $
 
 =pod
 
@@ -92,7 +92,7 @@ use Carp;
 
 
 BEGIN {
-    our $VERSION = '0.32.2';
+    our $VERSION = '0.32.3';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -100,8 +100,22 @@ BEGIN {
 use Net::DBus::Binding::Bus;
 use Net::DBus::Service;
 use Net::DBus::RemoteService;
+use Net::DBus::Test::MockConnection;
+use Net::DBus::Binding::Value;
 
 use vars qw($bus_system $bus_session);
+
+use Exporter qw(import);
+
+use vars qw(@EXPORT_OK %EXPORT_TAGS);
+
+@EXPORT_OK = qw(dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
+		dbus_byte dbus_boolean dbus_string dbus_double
+		dbus_struct dbus_array dbus_dict);
+
+%EXPORT_TAGS = (typing => [qw(dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
+			      dbus_byte dbus_boolean dbus_string dbus_double
+			      dbus_struct dbus_array dbus_dict)]);
 
 =pod
 
@@ -149,7 +163,7 @@ sub find {
 
 =item my $bus = Net::DBus->system(%params);
 
-Return a connection to the system message bus. Note that the
+Return a handle for the system message bus. Note that the
 system message bus is locked down by default, so unless appropriate
 access control rules are added in /etc/dbus/system.d/, an application
 may access services, but won't be able to export services.
@@ -172,7 +186,7 @@ sub system {
 
 =item my $bus = Net::DBus->session(%params);
 
-Return a connection to the session message bus. 
+Return a handle for the session message bus. 
 The optional C<params> hash can contain be used to specify
 connection options. The only support option at this time
 is C<nomainloop> which prevents the bus from being automatically
@@ -186,6 +200,25 @@ sub session {
 	$bus_session = $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SESSION), @_);
     }
     return $bus_session;
+}
+
+
+=pod
+
+=item my $bus = Net::DBus->test(%params);
+
+Returns a handle for a virtual bus for use in unit tests. This bus does 
+not make any network connections, but rather has an in-memory message
+pipeline. Consult L<Net::DBus::Test::MockConnection> for further details 
+of how to use this special bus.
+
+=cut
+
+# NB. explicitly do *NOT* cache, since unit tests
+# should always have pristine state
+sub test {
+    my $class = shift;
+    return $class->_new(Net::DBus::Test::MockConnection->new());
 }
 
 =pod
@@ -500,6 +533,180 @@ sub _signal_func {
 
 =back
 
+=head1 DATA TYPING METHODS
+
+These methods are not usually used, since most services provide introspection
+data to inform clients of their data typing requirements. If introspection data
+is incomplete, however, it may be neccessary for a client to mark values with
+specific data types. In such a case, the following methods can be used. They
+are not, however, exported by default so must be requested at import time by
+specifying 'use Net::DBus qw(:typing)'
+
+=over 4
+
+=item $typed_value = dbus_int32($value);
+
+Mark a value as being a signed, 32-bit integer.
+
+=cut
+
+sub dbus_int32 {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_INT32,
+					  $_[0]);
+					  
+}
+
+=pod
+
+=item $typed_value = dbus_uint32($value);
+
+Mark a value as being an unsigned, 32-bit integer.
+
+=cut
+
+
+sub dbus_uint32 {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_UINT32,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_int64($value);
+
+Mark a value as being an unsigned, 64-bit integer.
+
+=cut
+
+
+
+sub dbus_int64 {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_INT64,
+					  $_[0]);
+					  
+}
+
+=pod
+
+=item $typed_value = dbus_uint64($value);
+
+Mark a value as being an unsigned, 64-bit integer.
+
+=cut
+
+
+
+sub dbus_uint64 {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_UINT64,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_double($value);
+
+Mark a value as being a double precision IEEE floating point.
+
+=cut
+
+
+
+sub dbus_double {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_DOUBLE,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_byte($value);
+
+Mark a value as being an unsigned, byte.
+
+=cut
+
+
+
+sub dbus_byte {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_BYTE,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_string($value);
+
+Mark a value as being a UTF-8 string. This is not usually required
+since 'string' is the default data type for any Perl scalar value.
+
+=cut
+
+
+
+sub dbus_string {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_STRING,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_boolean($value);
+
+Mark a value as being an boolean
+
+=cut
+
+
+
+sub dbus_boolean {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_BOOLEAN,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_array($value);
+
+Mark a value as being an array
+
+=cut
+
+
+sub dbus_array {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_ARRAY,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_struct($value);
+
+Mark a value as being a structure
+
+=cut
+
+
+sub dbus_struct {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_STRUCT,
+					  $_[0]);
+}
+
+=pod
+
+=item $typed_value = dbus_dict($value);
+
+Mark a value as being a dictionary
+
+=cut
+
+sub dbus_dict{
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_DICT_ENTRY,
+					  $_[0]);
+}
+
+=pod
+
+=back
+
 =head1 SEE ALSO
 
 L<Net::DBus>, L<Net::DBus::RemoteService>, L<Net::DBus::Service>, 
@@ -511,12 +718,9 @@ L<dbus-monitor(1)>, L<dbus-daemon-1(1)>, L<dbus-send(1)>, L<http://dbus.freedesk
 
 Daniel Berrange <dan@berrange.com>
 
-=head1 COPYRIGHT AND LICENSE
+=head1 COPYRIGHT
 
 Copyright 2004-2005 by Daniel Berrange
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
 
 =cut
 

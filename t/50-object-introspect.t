@@ -9,7 +9,10 @@ BEGIN {
     use_ok('Net::DBus::Object');
 };
 
-my $object = Net::DBus::Object->new(new DummyService(), "/org/example/Object/OtherObject");
+my $bus = Net::DBus->test;
+my $service = $bus->export_service("/org/cpan/Net/DBus/Test/introspect");
+
+my $object = Net::DBus::Object->new($service, "/org/example/Object/OtherObject");
 
 my $introspector = $object->_introspector;
 
@@ -39,20 +42,5 @@ my $xml_expect = <<EOF;
 </node>
 EOF
     
-    is($xml_got, $xml_expect, "xml data matches");
+is($xml_got, $xml_expect, "xml data matches");
 
-
-package DummyService;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-    
-    bless $self, $class;
-    
-    return $self;
-}
-
-sub _register_object {
-    my $self = shift;
-}

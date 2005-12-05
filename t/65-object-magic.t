@@ -39,7 +39,8 @@ sub test_get_caller {
 
 package main;
 
-my $service = new DummyService();
+my $bus = Net::DBus->test;
+my $service = $bus->export_service("/org/cpan/Net/Bus/test");
 my $object = MyObject->new($service, "/org/example/MyObject");
 
 my $introspector = $object->_introspector;
@@ -84,8 +85,8 @@ CALLER: {
 							   interface => "org.example.MyObject",
 							   method_name => "test_set_caller");
     $msg->set_sender(":1.1");
-    $object->_dispatch($service->get_bus->get_connection, $msg);
-    my $reply = $service->get_bus->get_connection->next_message;
+
+    my $reply = $bus->get_connection->send_with_reply_and_block($msg);
 
     isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
     
@@ -98,85 +99,11 @@ SERIAL: {
 							   object_path => "/org/example/MyObject",      
 							   interface => "org.example.MyObject",
 							   method_name => "test_set_serial");
-    $object->_dispatch($service->get_bus->get_connection, $msg);
-    my $reply = $service->get_bus->get_connection->next_message;
+
+    my $reply = $bus->get_connection->send_with_reply_and_block($msg);
 
     isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
     
     is($object->test_get_serial, $msg->get_serial, "serial matches");
 }
 
-
-
-package DummyService;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-    
-    $self->{bus} = DummyBus->new();
-
-    bless $self, $class;
-    
-    return $self;
-}
-
-sub _register_object {
-    my $self = shift;
-}
-
-sub get_bus {
-    my $self = shift;
-    return $self->{bus};
-}
-
-package DummyBus;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-    
-    $self->{connection} = DummyConnection->new();
-
-    bless $self, $class;
-    
-    return $self;
-}
-
-sub get_connection {
-    my $self = shift;
-    return $self->{connection};
-}
-
-
-package DummyConnection;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-
-    $self->{msgs} = [];
-    
-    bless $self, $class;
-
-    return $self;
-}
-
-
-sub send {
-    my $self = shift;
-    my $msg = shift;
-
-    push @{$self->{msgs}}, $msg;
-}
-
-sub next_message {
-    my $self = shift;
-
-    return shift @{$self->{msgs}};
-}
-
-sub register_object_path {
-    my $self = shift;
-    # nada
-}

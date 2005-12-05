@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Exporter.pm,v 1.7 2005/10/15 13:31:42 dan Exp $
+# $Id: Exporter.pm,v 1.8 2005/11/21 11:37:56 dan Exp $
 
 =pod
 
@@ -191,14 +191,38 @@ increments on every method call.
 
 =back
 
+=head1 ANNOTATIONS
+
+When exporting methods, signals & properties, in addition to the core
+data typing information, a number of metadata annotations are possible.
+These are specified by passing a hash reference with the desired keys
+as the last parameter when defining the export. The following annotations
+are currently supported
+
+=over 4
+
+=item no_return
+
+Indicate that this method does not return any value, and thus no reply
+message should be sent over the wire, likewise informing the clients
+not to expect / wait for a reply message
+
+=item deprecated
+
+Indicate that use of this method/signal/property is discouraged, and 
+it may disappear altogether in a future release. Clients will typically
+print out a warning message when a deprecated method/signal/property
+is used.
+
+=back
+
 =head1 METHODS
 
 =over 4
 
-=item dbus_method($name, $params, $returns);
+=item dbus_method($name, $params, $returns, [\%annotations]);
 
-=item dbus_method($name, $params, $returns, $interface);
-
+=item dbus_method($name, $params, $returns, $interface, [\%annotations]);
 
 Exports a method called C<$name>, having parameters whose types
 are defined by C<$params>, and returning values whose types are
@@ -277,6 +301,20 @@ returns a dictionary containing the last modification times.
 
     dbus_method("LastModified", ["array", "string"], ["dict", "string", "int32"]);
 
+=item Annotating methods with metdata
+
+A method which is targetted for removal, and also does not
+return any value
+
+    sub PlayMP3 {
+	my $self = shift;
+        my $track = shift;
+
+        system "mpg123 $track &";
+    }
+
+    dbus_method("PlayMP3", ["string"], [], { deprecated => 1, no_return => 1 });
+
 =back
 
 =head1 SEE ALSO
@@ -294,9 +332,9 @@ package Net::DBus::Exporter;
 use vars qw(@ISA @EXPORT %dbus_exports %dbus_introspectors);
 
 use warnings;
-#use strict;
+use strict;
 
-require Exporter;
+use Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = qw(dbus_method dbus_signal dbus_property);
@@ -341,6 +379,7 @@ sub dbus_introspector {
 	# If this class has not been exported, lets look
 	# at the parent class & return its introspection
         # data instead.
+	no strict 'refs';
 	if (defined (*{"${class}::ISA"})) {
 	    my @isa = @{"${class}::ISA"};
 	    foreach my $parent (@isa) {
@@ -375,21 +414,21 @@ sub _dbus_introspector_add {
     my $exports = $dbus_exports{$class};
     if ($exports) {
 	foreach my $method (keys %{$exports->{methods}}) {
-	    my ($params, $returns, $interface) = @{$exports->{methods}->{$method}};
-	    $introspector->add_method($method, $params, $returns, $interface);
+	    my ($params, $returns, $interface, $attributes) = @{$exports->{methods}->{$method}};
+	    $introspector->add_method($method, $params, $returns, $interface, $attributes);
 	}
 	foreach my $prop (keys %{$exports->{props}}) {
-	    my ($type, $access, $interface) = @{$exports->{props}->{$prop}};
-	    $introspector->add_property($prop, $type, $access, $interface);
+	    my ($type, $access, $interface, $attributes) = @{$exports->{props}->{$prop}};
+	    $introspector->add_property($prop, $type, $access, $interface, $attributes);
 	}
 	foreach my $signal (keys %{$exports->{signals}}) {
-	    my ($params, $interface) = @{$exports->{signals}->{$signal}};
-	    $introspector->add_signal($signal, $params, $interface);
+	    my ($params, $interface, $attributes) = @{$exports->{signals}->{$signal}};
+	    $introspector->add_signal($signal, $params, $interface, $attributes);
 	}
     }
     
-
     if (defined (*{"${class}::ISA"})) {
+	no strict "refs";
 	my @isa = @{"${class}::ISA"};
 	foreach my $parent (@isa) {
 	    &_dbus_introspector_add($parent, $introspector);
@@ -399,70 +438,84 @@ sub _dbus_introspector_add {
 
 sub dbus_method {
     my $name = shift;
-    my $params = shift;
-    my $returns = shift;
-
-    $params = [] unless defined $params;
-    $returns = [] unless defined $returns;
-    
+    my $params = [];
+    my $returns = [];
     my $caller = caller;
-    my $is = $dbus_exports{$caller};
-
-    my $interface;
-    if (@_) {
-	$interface = shift;
-    } elsif (!exists $is->{interface}) {
-	die "interface not specified & not default interface defined";
-    } else {
-	$interface = $is->{interface};
+    my $interface = $dbus_exports{$caller}->{interface};
+    my %attributes;
+    
+    if (@_ && ref($_[0]) eq "ARRAY") {
+	$params = shift;
     }
-	
-    $is->{methods}->{$name} = [$params, $returns, $interface];
+    if (@_ && ref($_[0]) eq "ARRAY") {
+	$returns = shift;
+    }
+    if (@_ && !ref($_[0])) {
+	$interface = shift;
+    }
+    if (@_ && ref($_[0]) eq "HASH") {
+	%attributes = %{$_[0]};
+    }
+
+    if (!$interface) {
+	die "interface not specified & no default interface defined";
+    }
+    
+    $dbus_exports{$caller}->{methods}->{$name} = [$params, $returns, $interface, \%attributes];
 }
 
 
 sub dbus_property {
     my $name = shift;
-    my $type = shift;
-    my $access = shift;
-    
-    $access = "readwrite" unless defined $access;
-
+    my $type = "string";
+    my $access = "readwrite";
     my $caller = caller;
-    my $is = $dbus_exports{$caller};
-
-    my $interface;
-    if (@_) {
-	$interface = shift;
-    } elsif (!exists $is->{interface}) {
-	die "interface not specified & not default interface defined";
-    } else {
-	$interface = $is->{interface};
+    my $interface = $dbus_exports{$caller}->{interface};
+    my %attributes;
+    
+    if (@_ && !ref($_[0])) {
+	$type = shift;
     }
-	
-    $is->{props}->{$name} = [$type, $access, $interface];
+    if (@_ && !ref($_[0])) {
+	$access = shift;
+    }
+    if (@_ && !ref($_[0])) {
+	$interface = shift;
+    }
+    if ($_ && ref($_[0]) eq "HASH") {
+	%attributes = %{$_[0]};
+    }
+
+    if (!$interface) {
+	die "interface not specified & no default interface defined";
+    }
+    
+    $dbus_exports{$caller}->{props}->{$name} = [$type, $access, $interface, \%attributes];
 }
 
 
 sub dbus_signal {
     my $name = shift;
-    my $params = shift;
-    
-    $params = [] unless defined $params;
-
+    my $params = [];
     my $caller = caller;
-    my $is = $dbus_exports{$caller};
+    my $interface = $dbus_exports{$caller}->{interface};
+    my %attributes;
     
-    my $interface;
-    if (@_) {
-	$interface = shift;
-    } elsif (!exists $is->{interface}) {
-	die "interface not specified & not default interface defined";
-    } else {
-	$interface = $is->{interface};
+    if (@_ && ref($_[0]) eq "ARRAY") {
+	$params = shift;
     }
-	
-    $is->{signals}->{$name} = [$params, $interface];
+    if (@_ && !ref($_[0])) {
+	$interface = shift;
+    }
+    if (@_ && ref($_[0]) eq "HASH") {
+	%attributes = %{$_[0]};
+    }
+
+    if (!$interface) {
+	die "interface not specified & no default interface defined";
+    }
+
+    $dbus_exports{$caller}->{signals}->{$name} = [$params, $interface, \%attributes];
 }
 
 1;

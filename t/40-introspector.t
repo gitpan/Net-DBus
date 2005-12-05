@@ -25,12 +25,14 @@ TEST_ONE: {
 								},
 							    },
 							    signals => {
-								"meltdown" => ["int32", "byte"],
+								"meltdown" => {
+								    params => ["int32", "byte"],
+								}
 							    },
 							    props => {
-								"name" => ["string", "readwrite"],
-								"email" => ["string", "read"],
-								"age" => ["int32", "read"],
+								"name" => { type => "string", access => "readwrite"},
+								"email" => { type => "string", access => "read"},
+								"age" => { type => "int32", access => "read"},
 							    },
 							}
 						    });
@@ -82,7 +84,9 @@ EOF
 							  },
 						      },
 						      signals => {
-							  "meltdown" => ["int32", "byte"],
+							  "meltdown" => {
+							      params => ["int32", "byte"],
+							  }
 						      },
 						  },
 						  "org.example.OtherInterface" => {
@@ -93,8 +97,8 @@ EOF
 							 }
 						     },
 						     props => {
-							 "title" => ["string", "readwrite"],
-							 "salary" => ["int32", "read"],
+							 "title" => { type => "string", access => "readwrite"},
+							 "salary" => { type => "int32", access => "read"},
 						     },
 						 },
 					      },

@@ -14,23 +14,26 @@ if (!$DBUS_LIBS || !$DBUS_CFLAGS) {
 }
 
 WriteMakefile(
-    'NAME' => 'Net::DBus',
-    'VERSION_FROM' => 'lib/Net/DBus.pm',
-    'PREREQ_PM' => {
-        'Test::More'  => 0,
-        'Time::HiRes' => 0,
-        'XML::Grove' => 0,
-        'XML::Parser' => 0
-    },
+	      'NAME' => 'Net::DBus',
+	      'VERSION_FROM' => 'lib/Net/DBus.pm',
+	      'PREREQ_PM' => {
+		  'Test::More'  => 0,
+		  'Time::HiRes' => 0,
+		  'XML::Grove' => 0,
+		  'XML::Parser' => 0
+		  },
 #    'ABSTRACT_FROM' => 'lib/Net/DBus.pm',
-    'AUTHOR' => 'Daniel Berrange <dan@berrange.com>',
-    'LIBS' => [$DBUS_LIBS], 
-    'DEFINE' => "-DDBUS_API_SUBJECT_TO_CHANGE -DPD_DO_DEBUG=1",
-    'INC' => "-Wall $DBUS_CFLAGS",
-    'depend' => {
-       Net-DBus.spec => '$(VERSION_FROM)',
-       Makefile => '$(VERSION_FROM)',
-    }
+	      'AUTHOR' => 'Daniel Berrange <dan@berrange.com>',
+	      'LIBS' => [$DBUS_LIBS], 
+	      'DEFINE' => "-DDBUS_API_SUBJECT_TO_CHANGE -DPD_DO_DEBUG=1",
+	      'INC' => "-Wall $DBUS_CFLAGS",
+	      'depend' => {
+		  Net-DBus.spec => '$(VERSION_FROM)',
+		  Makefile => '$(VERSION_FROM)',
+	      },
+	      'realclean' => {
+		  FILES => 'Net-DBus.spec',
+	      },
 );
 
 package MY;

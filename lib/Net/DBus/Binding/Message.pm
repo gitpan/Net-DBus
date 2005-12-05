@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Message.pm,v 1.10 2005/10/15 13:31:42 dan Exp $
+# $Id: Message.pm,v 1.11 2005/11/21 10:54:48 dan Exp $
 
 =pod
 
@@ -142,6 +142,12 @@ sub get_member {
     return $self->{message}->dbus_message_get_member;
 }
 
+sub get_signature {
+    my $self = shift;
+    
+    return $self->{message}->dbus_message_get_signature;
+}
+
 sub set_sender {
     my $self = shift;
     $self->{message}->dbus_message_set_sender(@_);
@@ -238,11 +244,8 @@ L<Net::DBus::Binding::Server>, L<Net::DBus::Binding::Connection>, L<Net::DBus::B
 
 Daniel Berrange E<lt>dan@berrange.comE<gt>
 
-=head1 COPYRIGHT AND LICENSE
+=head1 COPYRIGHT
 
 Copyright 2004 by Daniel Berrange
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
 
 =cut

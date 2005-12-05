@@ -12,7 +12,7 @@
 
 Summary: Perl API to the DBus message system
 Name: perl-%{appname}
-Version: 0.32.2
+Version: 0.32.3
 Release: 1%{_extra_release}
 License: GPL
 Group: Applications/Internet

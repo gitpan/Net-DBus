@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Object.pm,v 1.18 2005/10/23 16:34:12 dan Exp $
+# $Id: Object.pm,v 1.19 2005/11/21 10:53:31 dan Exp $
 
 =pod
 
@@ -116,7 +116,7 @@ This creates a new DBus object with an path of C<$path>
 registered within the service C<$service>. The C<$path>
 parameter should be a string complying with the usual
 DBus requirements for object paths, while the C<$service>
-parameter should be an instrance of L<Net::DBus::Service>.
+parameter should be an instance of L<Net::DBus::Service>.
 The latter is typically obtained by calling the C<export_service>
 method on the L<Net::DBus> object.
 
@@ -172,7 +172,6 @@ BEGIN {
     }
 }
 
-use Net::DBus::RemoteObject;
 use Net::DBus::Exporter "org.freedesktop.DBus.Introspectable";
 use Net::DBus::Binding::Message::Error;
 use Net::DBus::Binding::Message::MethodReturn;

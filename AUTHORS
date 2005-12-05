@@ -5,10 +5,12 @@ Net::DBus is written by
 
     Daniel Berrange <dan-at-berrange-dot-com>
 
-With patches & contributions gratefully received from
+With patches, contributions & suggestions gratefully received 
+from
 
     Carlos Garnacho <carlosg-at-gnome-dot-org>
     Emmanuele Bassi <ebassi-at-gmail-dot-com>
+    Olivier Blin <oblin-at-mandriva-dot-com>
 
     [...send patches to get your name here!]
 

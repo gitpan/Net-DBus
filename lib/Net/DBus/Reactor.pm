@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Reactor.pm,v 1.7 2005/10/15 13:31:42 dan Exp $
+# $Id: Reactor.pm,v 1.8 2005/11/21 10:53:53 dan Exp $
 
 =pod
 
@@ -789,11 +789,8 @@ L<Net::DBus::Callback>, L<Net::DBus::Connection>, L<Net::DBus::Server>
 
 Daniel Berrange E<lt>dan@berrange.comE<gt>
 
-=head1 COPYRIGHT AND LICENSE
+=head1 COPYRIGHT
 
 Copyright 2004 by Daniel Berrange
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
 
 =cut

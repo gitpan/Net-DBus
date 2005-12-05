@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: RemoteObject.pm,v 1.17 2005/10/23 16:28:44 dan Exp $
+# $Id: RemoteObject.pm,v 1.18 2005/11/21 11:39:10 dan Exp $
 
 =pod
 
@@ -148,7 +148,7 @@ sub get_object_path {
 
 sub _introspector {
     my $self = shift;
-
+    
     unless ($self->{introspected}) {
 	my $call = Net::DBus::Binding::Message::MethodCall->
 	    new(service_name => $self->{service}->get_service_name(),
@@ -205,9 +205,9 @@ sub connect_to_signal {
     my $name = shift;
     my $code = shift;
 
+    my $ins = $self->_introspector;
     my $interface = $self->{interface};
     if (!$interface) {
-	my $ins = $self->_introspector;
 	if (!$ins) {
 	    die "no introspection data available for '" . $self->get_object_path . 
 		"', and object is not cast to any interface";
@@ -223,6 +223,12 @@ sub connect_to_signal {
 		"connecting to first interface only\n";
 	}
 	$interface = $interfaces[0];
+    }
+
+    if ($ins &&
+	$ins->has_signal($name, $interface) &&
+	$ins->is_signal_deprecated($name, $interface)) {
+	warn "signal $name in interface $interface on " . $self->get_object_path . " is deprecated";
     }
 
     $self->get_service->
@@ -257,43 +263,65 @@ sub AUTOLOAD {
     (my $name = $AUTOLOAD) =~ s/.*:://;
 
     my $interface = $self->{interface};
+    
+    # If introspection data is available, use that
+    # to resolve correct interface (if object is not
+    # cast to an explicit interface already)
     my $ins = $self->_introspector();
     if ($ins) {
-	my @interfaces = $ins->has_method($name);
-	
-	if (@interfaces) {
-	    if ($#interfaces > 0) {
-		warn "method with name '$name' is exported " .
-		    "in multiple interfaces of '" . $self->get_object_path . "'" .
-		    "calling first interface only\n";
+	if ($interface) {
+	    if ($ins->has_method($name, $interface)) {
+		return $self->_call_method($name, $interface, 1, @_);	    
 	    }
-	    return $self->_call_method($name, $interfaces[0], @_);
-	}
-	@interfaces = $ins->has_property($name);
-	
-	if (@interfaces) {
-	    if ($#interfaces > 0) {
-		warn "property with name '$name' is exported " .
-		    "in multiple interfaces of '" . $self->get_object_path . "'" .
-		    "calling first interface only\n";
+	    if ($ins->has_property($name, $interface)) {
+		if ($ins->is_property_deprecated($name, $interface)) {
+		    warn "property $name in interface $interface on " . $self->get_object_path . " is deprecated";
+		}
+
+		if (@_) {
+		    $self->_call_method("Set", "org.freedesktop.DBus.Properties", $interface, 1, $name, $_[0]);
+		    return ();
+		} else {
+		    return $self->_call_method("Get", "org.freedesktop.DBus.Properties", $interface, 1, $name);
+		}
 	    }
-	    if (@_) {
-		$self->_call_method("Set", "org.freedesktop.DBus.Properties", $interfaces[0], $name, $_[0]);
-		return ();
-	    } else {
-		return $self->_call_method("Get", "org.freedesktop.DBus.Properties", $interfaces[0], $name);
+	} else {
+	    my @interfaces = $ins->has_method($name);
+	    
+	    if (@interfaces) {
+		if ($#interfaces > 0) {
+		    die "method with name '$name' is exported " .
+			"in multiple interfaces of '" . $self->get_object_path . "'";
+		}
+		return $self->_call_method($name, $interfaces[0], 1, @_);
+	    }
+	    @interfaces = $ins->has_property($name);
+	    
+	    if (@interfaces) {
+		if ($#interfaces > 0) {
+		    die "property with name '$name' is exported " .
+			"in multiple interfaces of '" . $self->get_object_path . "'";
+		}
+		$interface = $interfaces[0];
+		if ($ins->is_property_deprecated($name, $interface)) {
+		    warn "property $name in interface $interface on " . $self->get_object_path . " is deprecated";
+		}
+		if (@_) {
+		    $self->_call_method("Set", "org.freedesktop.DBus.Properties", $interface, 1, $name, $_[0]);
+		    return ();
+		} else {
+		    return $self->_call_method("Get", "org.freedesktop.DBus.Properties", $interface, 1, $name);
+		}
 	    }
 	}
-	die "no method or property with name '$name' is exported in object '" .
-	    $self->get_object_path . "'\n";
-    } else {
-	if (!$interface) {
-	    die "no introspection data available for '" . $self->get_object_path . 
-		"', and object is not cast to any interface";
-	}
-	
-	return $self->_call_method($name, $interface, @_);
     }
+
+    if (!$interface) {
+	die "no introspection data available for method '" . $name . "' in object '" . 
+	    $self->get_object_path . "', and object is not cast to any interface";
+    }
+    
+    return $self->_call_method($name, $interface, 0, @_);
 }
 
 
@@ -301,6 +329,13 @@ sub _call_method {
     my $self = shift;
     my $name = shift;
     my $interface = shift;
+    my $introspect = shift;
+
+    my $ins = $introspect ? $self->_introspector : undef;
+    if ($ins &&
+	$ins->is_method_deprecated($name, $interface)) {
+	warn "method '$name' in interface $interface on object " . $self->get_object_path . " is deprecated\n";
+    }
 
     my $call = Net::DBus::Binding::Message::MethodCall->
 	new(service_name => $self->{service}->get_service_name(),
@@ -308,25 +343,30 @@ sub _call_method {
 	    method_name => $name,
 	    interface => $interface);
 
-    my $ins = $self->_introspector;
     if ($ins) {
 	$ins->encode($call, "methods", $name, "params", @_);
     } else {
 	$call->append_args_list(@_);
     }
-
-    my $reply = $self->{service}->
-	get_bus()->
-	get_connection()->
-	send_with_reply_and_block($call, 60 * 1000);
     
-    my @reply;
-    if ($ins) {
-	@reply = $ins->decode($reply, "methods", $name, "returns");
+    if (!$ins ||
+	$ins->does_method_reply($name, $interface)) {
+	my $reply = $self->{service}->
+	    get_bus()->
+	    get_connection()->
+	    send_with_reply_and_block($call, 60 * 1000);
+	
+	my @reply;
+	if ($ins) {
+	    @reply = $ins->decode($reply, "methods", $name, "returns");
+	} else {
+	    @reply = $reply->get_args_list;
+	}
+	
+	return wantarray ? @reply : $reply[0];
     } else {
-	@reply = $reply->get_args_list;
+	return wantarray ? () : undef;
     }
-    return wantarray ? @reply : $reply[0];
 }
 
 

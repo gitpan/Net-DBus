@@ -1,4 +1,41 @@
 
+Changes since 0.32.2
+
+ - Introspection data is used only as hint, so if an object
+   exports many methods, but only provides partial introspection
+   data, remote calls fallback to regular typing rules
+
+ - Re-add dbus_XXX convenience methods to Net::DBus to allow
+   clients to do explicit type casting. Must be requested at
+   export time, using 'Net::DBus qw(:typing)'.
+
+ - Update all example programs to run against session bus,
+   since there are no security rules to enable them to work
+   on system bus.
+
+ - Print out warning upon use, if a method, signal, or property
+   is annotated with the 'org.freedesktop.DBus.Deprecated' flag.
+
+ - Do not wait for a method reply if the method is annotated
+   with the 'org.freedesktop.DBus.Method.NoReply' flag.
+
+ - Extend Net::DBus::Exporter to enable methods, signals, and
+   properties to be annotated.
+
+ - Add support for 'org.freedesktop.DBus.Method.NoReply' and
+   'org.freedesktop.DBus.Deprecated' annotations when exporting
+   objects
+
+ - Add a pure in-memory bus implementation for facilitating
+   creation of unit tests which would otherwise require making
+   a connection to a 'live' message bus. Can be accessed via:
+ 
+      Net::DBus->test
+
+ - Add an *EXPERIMENTAL* mock object to faciltate creation of
+   unit tests which need to communicate with other objects on
+   the bus. See Net::DBus::Test::MockObject for further info.
+
 Changes since 0.32.1
 
  - Fix unit tests broken in previous build

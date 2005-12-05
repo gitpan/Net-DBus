@@ -38,7 +38,7 @@ sub emitHelloSignal {
 package main;
 
 
-my $bus = Net::DBus->find();
+my $bus = Net::DBus->session();
 my $service = $bus->export_service("org.designfu.TestService");
 my $object = TestObject->new($service);
 

@@ -21,6 +21,7 @@ lib/Net/DBus/Binding/Message/MethodCall.pm
 lib/Net/DBus/Binding/Message/MethodReturn.pm
 lib/Net/DBus/Binding/Message/Signal.pm
 lib/Net/DBus/Binding/Server.pm
+lib/Net/DBus/Binding/Value.pm
 lib/Net/DBus/Binding/Watch.pm
 lib/Net/DBus/Callback.pm
 lib/Net/DBus/Dumper.pm
@@ -30,13 +31,14 @@ lib/Net/DBus/Reactor.pm
 lib/Net/DBus/RemoteObject.pm
 lib/Net/DBus/RemoteService.pm
 lib/Net/DBus/Service.pm
+lib/Net/DBus/Test/MockConnection.pm
+lib/Net/DBus/Test/MockObject.pm
 lib/Net/DBus/Tutorial.pm
 lib/Net/DBus/Tutorial/ExportingObjects.pm
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
 META.yml
-Net-DBus.spec
 Net-DBus.spec.PL
 README
 rollingbuild.sh
@@ -46,7 +48,10 @@ t/20-callback.t
 t/25-reactor.t
 t/30-server.t
 t/40-introspector.t
+t/45-exporter.t
 t/50-object-introspect.t
+t/55-method-calls.t
+t/56-scalar-param-typing.t
 t/60-object-props.t
 t/65-object-magic.t
 typemap

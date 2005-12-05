@@ -42,7 +42,8 @@ dbus_property("age", "int32" ,"write");
 
 package main;
 
-my $service = new DummyService();
+my $bus = Net::DBus->test;
+my $service = $bus->export_service("/org/cpan/Net/Bus/test");
 my $object = MyObject->new($service, "/org/example/MyObject");
 
 my $introspector = $object->_introspector;
@@ -92,8 +93,7 @@ GET_NAME: {
     
     $object->name("John Doe");
 
-    $object->_dispatch($service->get_bus->get_connection, $msg);
-    my $reply = $service->get_bus->get_connection->next_message;
+    my $reply = $bus->get_connection->send_with_reply_and_block($msg);
 
     isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
     
@@ -113,10 +113,10 @@ GET_BOGUS: {
     
     $object->name("John Doe");
 
-    $object->_dispatch($service->get_bus->get_connection, $msg);
-    my $reply = $service->get_bus->get_connection->next_message;
-
-    isa_ok($reply, "Net::DBus::Binding::Message::Error");
+    my $reply = eval {
+	$bus->get_connection->send_with_reply_and_block($msg);
+    };
+    ok($@, "error is set");
 }
 
 sub GET_SET_NAME: {
@@ -125,19 +125,18 @@ sub GET_SET_NAME: {
 							    interface => "org.freedesktop.DBus.Properties",
 							    method_name => "Get");
     
-    my $iter = $msg1->iterator(1);
-    $iter->append_string("org.example.MyObject");
-    $iter->append_string("name");
+    my $iter1 = $msg1->iterator(1);
+    $iter1->append_string("org.example.MyObject");
+    $iter1->append_string("name");
     
     $object->name("John Doe");
 
-    $object->_dispatch($service->get_bus->get_connection, $msg1);
-    my $reply = $service->get_bus->get_connection->next_message;
+    my $reply1 = $bus->get_connection->send_with_reply_and_block($msg1);
 
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    isa_ok($reply1, "Net::DBus::Binding::Message::MethodReturn");
     
-    my ($value) = $reply->get_args_list;
-    is($value, "John Doe", "name is John Doe");
+    my ($value1) = $reply1->get_args_list;
+    is($value1, "John Doe", "name is John Doe");
 
     
     my $msg2 = Net::DBus::Binding::Message::MethodCall->new(service_name => "org.example.MyService",
@@ -145,24 +144,22 @@ sub GET_SET_NAME: {
 							    interface => "org.freedesktop.DBus.Properties",
 							    method_name => "Set");
     
-    $iter = $msg2->iterator(1);
-    $iter->append_string("org.example.MyObject");
-    $iter->append_string("name");
-    $iter->append_variant("Jane Doe");
+    my $iter2 = $msg2->iterator(1);
+    $iter2->append_string("org.example.MyObject");
+    $iter2->append_string("name");
+    $iter2->append_variant("Jane Doe");
 
-    $object->_dispatch($service->get_bus->get_connection, $msg2);
-    $reply = $service->get_bus->get_connection->next_message;
+    my $reply2 = $bus->get_connection->send_with_reply_and_block($msg2);
 
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    isa_ok($reply2, "Net::DBus::Binding::Message::MethodReturn");
 
 
-    $object->_dispatch($service->get_bus->get_connection, $msg1);
-    $reply = $service->get_bus->get_connection->next_message;
+    my $reply3 = $bus->get_connection->send_with_reply_and_block($msg1);
 
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    isa_ok($reply3, "Net::DBus::Binding::Message::MethodReturn");
     
-    ($value) = $reply->get_args_list;
-    is($value, "Jane Doe", "name is Jane Doe");    
+    my ($value2) = $reply3->get_args_list;
+    is($value2, "Jane Doe", "name is Jane Doe");    
 }
 
 
@@ -172,9 +169,9 @@ SET_AGE: {
 							    interface => "org.freedesktop.DBus.Properties",
 							    method_name => "Get");
     
-    my $iter = $msg1->iterator(1);
-    $iter->append_string("org.example.MyObject");
-    $iter->append_string("age");
+    my $iter1 = $msg1->iterator(1);
+    $iter1->append_string("org.example.MyObject");
+    $iter1->append_string("age");
     
     
     my $msg2 = Net::DBus::Binding::Message::MethodCall->new(service_name => "org.example.MyService",
@@ -182,21 +179,20 @@ SET_AGE: {
 							    interface => "org.freedesktop.DBus.Properties",
 							    method_name => "Set");
     
-    $iter = $msg2->iterator(1);
-    $iter->append_string("org.example.MyObject");
-    $iter->append_string("age");
-    $iter->append_variant(21);
+    my $iter2 = $msg2->iterator(1);
+    $iter2->append_string("org.example.MyObject");
+    $iter2->append_string("age");
+    $iter2->append_variant(21);
 
-    $object->_dispatch($service->get_bus->get_connection, $msg2);
-    my $reply = $service->get_bus->get_connection->next_message;
+    my $reply1 = $bus->get_connection->send_with_reply_and_block($msg2);
 
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    isa_ok($reply1, "Net::DBus::Binding::Message::MethodReturn");
 
 
-    $object->_dispatch($service->get_bus->get_connection, $msg1);
-    $reply = $service->get_bus->get_connection->next_message;
-
-    isa_ok($reply, "Net::DBus::Binding::Message::Error");
+    my $reply2 = eval {
+	$bus->get_connection->send_with_reply_and_block($msg1);
+    };
+    ok($@, "error is set");
 
     is($object->age, 21, "age is 21");
 }
@@ -208,9 +204,9 @@ GET_EMAIL: {
 							    interface => "org.freedesktop.DBus.Properties",
 							    method_name => "Get");
     
-    my $iter = $msg1->iterator(1);
-    $iter->append_string("org.example.MyObject");
-    $iter->append_string("email");
+    my $iter1 = $msg1->iterator(1);
+    $iter1->append_string("org.example.MyObject");
+    $iter1->append_string("email");
     
     $object->email('john@example.com');
     
@@ -219,98 +215,24 @@ GET_EMAIL: {
 							    interface => "org.freedesktop.DBus.Properties",
 							    method_name => "Set");
     
-    $iter = $msg2->iterator(1);
-    $iter->append_string("org.example.MyObject");
-    $iter->append_string("email");
-    $iter->append_variant('jane@example.com');
+    my $iter2 = $msg2->iterator(1);
+    $iter2->append_string("org.example.MyObject");
+    $iter2->append_string("email");
+    $iter2->append_variant('jane@example.com');
 
-    $object->_dispatch($service->get_bus->get_connection, $msg2);
-    my $reply = $service->get_bus->get_connection->next_message;
+    my $reply1 = eval {
+	$bus->get_connection->send_with_reply_and_block($msg2);
+    };
+    ok($@, "error is set");
 
-    isa_ok($reply, "Net::DBus::Binding::Message::Error");
+    my $reply2 = $bus->get_connection->send_with_reply_and_block($msg1);
 
-
-    $object->_dispatch($service->get_bus->get_connection, $msg1);
-    $reply = $service->get_bus->get_connection->next_message;
-
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    isa_ok($reply2, "Net::DBus::Binding::Message::MethodReturn");
 
     is($object->age, 21, "age is 21");
 
-    my ($value) = $reply->get_args_list;
+    my ($value) = $reply2->get_args_list;
     is($value, 'john@example.com', 'email is john@example.com');
 }
 
 
-package DummyService;
-
-sub new {
-    my $class = shift;
-    my $self = {};
- 
-    $self->{bus} = DummyBus->new();
-   
-    bless $self, $class;
-    
-    return $self;
-}
-
-sub _register_object {
-    my $self = shift;
-}
-
-sub get_bus {
-    my $self = shift;
-    return $self->{bus};
-}
-
-package DummyBus;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-    
-    $self->{connection} = DummyConnection->new();
-
-    bless $self, $class;
-    
-    return $self;
-}
-
-sub get_connection {
-    my $self = shift;
-    return $self->{connection};
-}
-
-
-package DummyConnection;
-
-sub new {
-    my $class = shift;
-    my $self = {};
-
-    $self->{msgs} = [];
-    
-    bless $self, $class;
-
-    return $self;
-}
-
-
-sub send {
-    my $self = shift;
-    my $msg = shift;
-
-    push @{$self->{msgs}}, $msg;
-}
-
-sub next_message {
-    my $self = shift;
-
-    return shift @{$self->{msgs}};
-}
-
-sub register_object_path {
-    my $self = shift;
-    # nada
-}

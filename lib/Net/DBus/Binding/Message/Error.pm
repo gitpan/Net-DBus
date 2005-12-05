@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Error.pm,v 1.3 2005/10/15 13:31:42 dan Exp $
+# $Id: Error.pm,v 1.4 2005/11/21 10:54:48 dan Exp $
 
 package Net::DBus::Binding::Message::Error;
 
@@ -47,6 +47,13 @@ sub new {
     bless $self, $class;
     
     return $self;
+}
+
+
+sub get_error_name {
+    my $self = shift;
+    
+    return $self->{message}->dbus_message_get_error_name;
 }
 
 1;

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: DBus.xs,v 1.16 2005/10/15 14:21:47 dan Exp $
+ * $Id: DBus.xs,v 1.17 2005/11/21 10:54:48 dan Exp $
  */
 
 #include "EXTERN.h"
@@ -828,6 +828,14 @@ dbus_message_get_serial(msg)
 
 const char *
 dbus_message_get_member(msg)
+	DBusMessage *msg;
+
+const char *
+dbus_message_get_error_name(msg)
+	DBusMessage *msg;
+
+const char *
+dbus_message_get_signature(msg)
 	DBusMessage *msg;
 
 void
