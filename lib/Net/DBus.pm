@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: DBus.pm,v 1.21 2005/11/21 12:47:59 dan Exp $
+# $Id: DBus.pm,v 1.24 2006/01/27 15:34:22 dan Exp $
 
 =pod
 
@@ -30,7 +30,7 @@ DBus - Perl extension for the DBus message system
   ####### Attaching to the bus ###########
 
   use Net::DBus;
- 
+
   # Find the most appropriate bus
   my $bus = Net::DBus->find;
 
@@ -45,7 +45,7 @@ DBus - Perl extension for the DBus message system
 
   # Get a handle to the HAL service
   my $hal = $bus->get_service("org.freedesktop.Hal");
-  
+
   # Get the device manager
   my $manager = $hal->get_object("/org/freedesktop/Hal/Manager", 
                                  "org.freedesktop.Hal.Manager");
@@ -55,7 +55,7 @@ DBus - Perl extension for the DBus message system
       print $dev, "\n";
   }
 
-  
+
   ######### Providing services ##############
 
   # Register a service known as 'org.example.Jukebox'
@@ -92,7 +92,7 @@ use Carp;
 
 
 BEGIN {
-    our $VERSION = '0.32.3';
+    our $VERSION = '0.33.1';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -116,8 +116,6 @@ use vars qw(@EXPORT_OK %EXPORT_TAGS);
 %EXPORT_TAGS = (typing => [qw(dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
 			      dbus_byte dbus_boolean dbus_string dbus_double
 			      dbus_struct dbus_array dbus_dict)]);
-
-=pod
 
 =item my $bus = Net::DBus->find(%params);
 
@@ -159,8 +157,6 @@ sub find {
     }
 }
 
-=pod
-
 =item my $bus = Net::DBus->system(%params);
 
 Return a handle for the system message bus. Note that the
@@ -182,8 +178,6 @@ sub system {
     return $bus_system
 }
 
-=pod
-
 =item my $bus = Net::DBus->session(%params);
 
 Return a handle for the session message bus. 
@@ -203,8 +197,6 @@ sub session {
 }
 
 
-=pod
-
 =item my $bus = Net::DBus->test(%params);
 
 Returns a handle for a virtual bus for use in unit tests. This bus does 
@@ -220,8 +212,6 @@ sub test {
     my $class = shift;
     return $class->_new(Net::DBus::Test::MockConnection->new());
 }
-
-=pod
 
 =item my $bus = Net::DBus->new($address, %params);
 
@@ -271,10 +261,7 @@ sub _new {
     return $self;
 }
 
-
-=pod
-
-=item my $connection = $bus->connection;
+=item my $connection = $bus->get_connection;
 
 Return a handle to the underlying, low level connection object
 associated with this bus. The returned object will be an instance
@@ -288,8 +275,6 @@ sub get_connection {
     my $self = shift;
     return $self->{connection};
 }
-
-=pod
 
 =item my $service = $bus->get_service($name);
 
@@ -322,9 +307,6 @@ sub get_service {
     return $self->{services}->{$owner};
 }
 
-
-=pod
-
 =item my $service = $bus->export_service($name);
 
 Registers a service with the bus, returning a handle to
@@ -338,8 +320,6 @@ sub export_service {
     my $name = shift;
     return Net::DBus::Service->new($self, $name);
 }
-
-=pod
 
 =item my $object = $bus->get_bus_object;
 
@@ -358,8 +338,6 @@ sub get_bus_object {
 }
 
 
-=pod
-
 =item my $name = $bus->get_unique_name;
 
 Retrieves the unique name of this client's connection to
@@ -372,8 +350,6 @@ sub get_unique_name {
     
     return $self->get_connection->get_unique_name
 }
-
-=pod
 
 =item my $name = $bus->get_service_owner($service);
 
@@ -529,8 +505,6 @@ sub _signal_func {
     return $handled;
 }
 
-=pod
-
 =back
 
 =head1 DATA TYPING METHODS
@@ -556,8 +530,6 @@ sub dbus_int32 {
 					  
 }
 
-=pod
-
 =item $typed_value = dbus_uint32($value);
 
 Mark a value as being an unsigned, 32-bit integer.
@@ -569,8 +541,6 @@ sub dbus_uint32 {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_UINT32,
 					  $_[0]);
 }
-
-=pod
 
 =item $typed_value = dbus_int64($value);
 
@@ -586,8 +556,6 @@ sub dbus_int64 {
 					  
 }
 
-=pod
-
 =item $typed_value = dbus_uint64($value);
 
 Mark a value as being an unsigned, 64-bit integer.
@@ -600,8 +568,6 @@ sub dbus_uint64 {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_UINT64,
 					  $_[0]);
 }
-
-=pod
 
 =item $typed_value = dbus_double($value);
 
@@ -616,8 +582,6 @@ sub dbus_double {
 					  $_[0]);
 }
 
-=pod
-
 =item $typed_value = dbus_byte($value);
 
 Mark a value as being an unsigned, byte.
@@ -630,8 +594,6 @@ sub dbus_byte {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_BYTE,
 					  $_[0]);
 }
-
-=pod
 
 =item $typed_value = dbus_string($value);
 
@@ -647,8 +609,6 @@ sub dbus_string {
 					  $_[0]);
 }
 
-=pod
-
 =item $typed_value = dbus_boolean($value);
 
 Mark a value as being an boolean
@@ -662,8 +622,6 @@ sub dbus_boolean {
 					  $_[0]);
 }
 
-=pod
-
 =item $typed_value = dbus_array($value);
 
 Mark a value as being an array
@@ -676,8 +634,6 @@ sub dbus_array {
 					  $_[0]);
 }
 
-=pod
-
 =item $typed_value = dbus_struct($value);
 
 Mark a value as being a structure
@@ -689,8 +645,6 @@ sub dbus_struct {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_STRUCT,
 					  $_[0]);
 }
-
-=pod
 
 =item $typed_value = dbus_dict($value);
 
@@ -712,7 +666,7 @@ sub dbus_dict{
 L<Net::DBus>, L<Net::DBus::RemoteService>, L<Net::DBus::Service>, 
 L<Net::DBus::RemoteObject>, L<Net::DBus::Object>, 
 L<Net::DBus::Exporter>, L<Net::DBus::Dumper>, L<Net::DBus::Reactor>,
-L<dbus-monitor(1)>, L<dbus-daemon-1(1)>, L<dbus-send(1)>, L<http://dbus.freedesktop.org>,
+C<dbus-monitor(1)>, C<dbus-daemon-1(1)>, C<dbus-send(1)>, L<http://dbus.freedesktop.org>,
 
 =head1 AUTHOR
 
@@ -733,7 +687,7 @@ use overload ('""' => 'stringify');
 sub stringify {
     my $self = shift;
     
-    return $self->{name} . ": " . $self->{message};
+    return $self->{name} . ": " . $self->{message} . ($self->{message} =~ /\n$/ ? "" : "\n");
 }
     
 

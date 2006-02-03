@@ -44,19 +44,26 @@ sub libscan
     ($path =~ /\~$/ || $path =~ m,/CVS/,) ? undef : $path;
   }
 
-sub postamble {
+sub test {
+    my $self = shift;
+    my $mm_test = $self->SUPER::test(@_);
+    
     return '
-TO_TEST_PM = $(TO_INST_PM:lib/%.pm=blib/test/%.pm)
+TO_TEST_PM = $(TO_INST_PM:lib/%.pm=blib/test/%.pm.tstamp)
 
-XXXtest :: $(TO_TEST_PM)
+test :: test-syntax
 
-blib/test/%.pm: blib/lib/%.pm
-	@echo -n "Checking $@: "
-	@perl -I blib/lib -I blib/arch -c $<
+test-syntax: pure_all $(TO_TEST_PM)
+
+blib/test/%.pm.tstamp: lib/%.pm
+	@echo -n "Checking $<: "
+	#@perl -I blib/lib -c $<
+	@podchecker $<
 	@mkdir -p `dirname $@`
 	@touch $@
-';
-}
+
+' . $mm_test;
+  }
 
 
 __END__

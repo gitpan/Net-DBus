@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: MockConnection.pm,v 1.1 2005/11/21 11:37:04 dan Exp $
+# $Id: MockConnection.pm,v 1.5 2006/02/03 13:30:14 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Test::MockConnection - mock connection object for unit testing
+Net::DBus::Test::MockConnection - Fake a connection to the bus unit testing
 
 =head1 SYNOPSIS
 
@@ -66,6 +66,15 @@ use warnings;
 
 use Net::DBus::Binding::Message::MethodReturn;
 
+=item my $con = Net::DBus::Test::MockConnection->new()
+
+Create a new mock connection object instance. It is not usually
+neccessary to create instances of this object directly, instead
+the C<test> method on the L<Net::DBus> object can be used to
+get a handle to a test bus.
+
+=cut
+
 sub new {
     my $class = shift;
     my $self = {};
@@ -73,12 +82,24 @@ sub new {
     $self->{replies} = [];
     $self->{signals} = [];
     $self->{objects} = {};
+    $self->{objectTrees} = {};
     $self->{filters} = [];
     
     bless $self, $class;
     
     return $self;
 }
+
+=item $con->send($message)
+
+Send a message over the mock connection. If the message is
+a method call, it will be dispatched straight to any corresponding
+mock object registered. If the mesage is an error or method return
+it will be made available as a return value for the C<send_with_reply_and_block>
+method. If the message is a signal it will be queued up for processing
+by the C<dispatch> method. 
+
+=cut
 
 
 sub send {
@@ -98,6 +119,15 @@ sub send {
 }
 
 
+=item $bus->request_name($service_name)
+
+Pretend to send a request to the bus registering the well known 
+name specified in the C<$service_name> parameter. In reality
+this is just a no-op giving the impression that the name was
+successfully registered.
+
+=cut
+
 sub request_name {
     my $self = shift;
     my $name = shift;
@@ -106,6 +136,17 @@ sub request_name {
     # XXX do we care about this for test cases? probably not...
     # ....famous last words
 }
+
+=item my $reply = $con->send_with_reply_and_block($msg)
+
+Send a message over the mock connection and wait for a
+reply. The C<$msg> should be an instance of C<Net::DBus::Binding::Message::MethodCall>
+and the return C<$reply> will be an instance of C<Net::DBus::Binding::Message::MethodReturn>.
+It is also possible that an error will be thrown, with
+the thrown error being blessed into the C<Net::DBus::Error>
+class.
+
+=cut
 
 sub send_with_reply_and_block {
     my $self = shift;
@@ -134,6 +175,14 @@ sub send_with_reply_and_block {
     return $reply;
 }
 
+=item $con->dispatch;
+
+Dispatches any pending messages in the incoming queue
+to their message handlers. This method should be called
+by test suites whenever they anticipate that there are
+pending signals to be dealt with.
+
+=cut
 
 sub dispatch {
     my $self = shift;
@@ -148,12 +197,33 @@ sub dispatch {
     }
 }
 
+=item $con->add_filter($coderef);
+
+Adds a filter to the connection which will be invoked whenever a
+message is received. The C<$coderef> should be a reference to a
+subroutine, which returns a true value if the message should be
+filtered out, or a false value if the normal message dispatch
+should be performed.
+
+=cut
+
 sub add_filter {
     my $self = shift;
     my $cb = shift;
     
     push @{$self->{filters}}, $cb;
 }
+
+=item $con->register_object_path($path, \&handler)
+
+Registers a handler for messages whose path matches
+that specified in the C<$path> parameter. The supplied
+code reference will be invoked with two parameters, the
+connection object on which the message was received,
+and the message to be processed (an instance of the
+C<Net::DBus::Binding::Message> class).
+
+=cut
 
 sub register_object_path {
     my $self = shift;
@@ -163,6 +233,41 @@ sub register_object_path {
     $self->{objects}->{$path} = $code;
 }
 
+=item $con->register_fallback($path, \&handler)
+
+Registers a handler for messages whose path starts with 
+the prefix specified in the C<$path> parameter. The supplied
+code reference will be invoked with two parameters, the
+connection object on which the message was received,
+and the message to be processed (an instance of the
+C<Net::DBus::Binding::Message> class).
+
+=cut
+
+sub register_fallback {
+    my $self = shift;
+    my $path = shift;
+    my $code = shift;
+    
+    $self->{objects}->{$path} = $code;
+    $self->{objectTrees}->{$path} = $code;
+}
+
+=item $con->unregister_object_path($path)
+
+Unregisters the handler associated with the object path C<$path>. The
+handler would previously have been registered with the C<register_object_path>
+or C<register_fallback> methods.
+
+=cut
+
+sub unregister_object_path {
+    my $self = shift;
+    my $path = shift;
+    
+    delete $self->{objects}->{$path};
+}
+
 sub _call_method {
     my $self = shift;
     my $msg = shift;
@@ -170,12 +275,21 @@ sub _call_method {
     if (exists $self->{objects}->{$msg->get_path}) {
 	my $cb = $self->{objects}->{$msg->get_path};
 	&$cb($self, $msg);
-    } elsif ($msg->get_path eq "/org/freedesktop/DBus") {
-	if ($msg->get_member eq "GetNameOwner") {
-	    my $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $msg);
-	    my $iter = $reply->iterator(1);
-	    $iter->append(":1.1");
-	    $self->send($reply);
+    } else {
+	foreach my $path (reverse sort { $a cmp $b } keys %{$self->{objectTrees}}) {
+	    if ((index $msg->get_path, $path) == 0) {
+		my $cb = $self->{objects}->{$path};
+		&$cb($self, $msg);
+		return;
+	    }
+	}
+	if ($msg->get_path eq "/org/freedesktop/DBus") {
+	    if ($msg->get_member eq "GetNameOwner") {
+		my $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $msg);
+		my $iter = $reply->iterator(1);
+		$iter->append(":1.1");
+		$self->send($reply);
+	    }
 	}
     }
 }

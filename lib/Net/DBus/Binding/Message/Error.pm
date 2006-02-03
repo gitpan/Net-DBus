@@ -16,7 +16,40 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Error.pm,v 1.4 2005/11/21 10:54:48 dan Exp $
+# $Id: Error.pm,v 1.6 2006/02/02 16:58:27 dan Exp $
+
+=pod
+
+=head1 NAME
+
+Net::DBus::Binding::Message::Error - a message encoding a method call error
+
+=head1 SYNOPSIS
+
+  use Net::DBus::Binding::Message::Error;
+
+  my $error = Net::DBus::Binding::Message::Error->new(
+      replyto => $method_call,
+      name => "org.example.myobject.FooException",
+      description => "Unable to do Foo when updating bar");
+
+  $connection->send($error);
+
+=head1 DESCRIPTION
+
+This module is part of the low-level DBus binding APIs, and
+should not be used by application code. No guarentees are made
+about APIs under the C<Net::DBus::Binding::> namespace being
+stable across releases.
+
+This module provides a convenience constructor for creating
+a message representing an error condition. 
+
+=head1 METHODS
+
+=over 4
+
+=cut
 
 package Net::DBus::Binding::Message::Error;
 
@@ -27,6 +60,17 @@ use Carp;
 
 use Net::DBus;
 use base qw(Net::DBus::Binding::Message);
+
+=item my $error = Net::DBus::Binding::Message::Error->new(
+      replyto => $method_call, name => $name, description => $description);
+
+Creates a new message, representing an error which occurred during
+the handling of the method call object passed in as the C<replyto>
+parameter. The C<name> parameter is the formal name of the error
+condition, while the C<description> is a short piece of text giving
+more specific information on the error.
+
+=cut
 
 sub new {
     my $proto = shift;
@@ -49,6 +93,12 @@ sub new {
     return $self;
 }
 
+=item my $name = $error->get_error_name
+
+Returns the formal name of the error, as previously passed in via
+the C<name> parameter in the constructor.
+
+=cut
 
 sub get_error_name {
     my $self = shift;
@@ -57,3 +107,21 @@ sub get_error_name {
 }
 
 1;
+
+__END__
+
+=back
+
+=head1 AUTHOR
+
+Daniel P. Berrange.
+
+=head1 COPYRIGHT
+
+Copyright (C) 2005-2006 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Message>
+
+=cut

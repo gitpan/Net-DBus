@@ -16,7 +16,46 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Callback.pm,v 1.5 2005/10/15 13:31:42 dan Exp $
+# $Id: Callback.pm,v 1.7 2006/02/02 16:58:26 dan Exp $
+
+=pod
+
+=head1 NAME
+
+Net::DBus::Callback - a callback for receiving reactor events
+
+=head1 SYNOPSIS
+
+  use Net::DBus::Callback;
+
+  # Assume we have a 'terminal' object and its got a method
+  # to be invoked everytime there is input on its terminal.
+  #
+  # To create a callback to invoke this method one might use
+  my $cb = Net::DBus::Callback->new(object => $terminal,
+                                    method => "handle_stdio");
+
+
+  # Whatever is monitoring the stdio channel, would then
+  # invoke the callback, perhaps passing in a parameter with
+  # some 'interesting' data, such as number of bytes available
+  $cb->invoke($nbytes)
+
+  #... which results in a call to
+  #  $terminal->handle_stdio($nbytes)
+
+=head1 DESCRIPTION
+
+This module provides a simple container for storing details
+about a callback to be invoked at a later date. It is used
+when registering to receive events from the L<Net::DBus::Reactor>
+class
+
+=head1 METHODS
+
+=over 4
+
+=cut
 
 package Net::DBus::Callback;
 
@@ -24,6 +63,23 @@ use 5.006;
 use strict;
 use warnings;
 use Carp qw(confess);
+
+=item my $cb = Net::DBus::Callback->new(method => $name, [args => \@args])
+
+Creates a new callback object, for invoking a plain old function. The C<method>
+parameter should be the fully qualified function name to invoke, including the
+package name. The optional C<args> parameter is an array reference of parameters
+to be pass to the callback, in addition to those passed into the C<invoke> method.
+
+=item my $cb = Net::DBus::Callback->new(object => $object, method => $name, [args => \@args])
+
+Creates a new callback object, for invoking a method on an object. The C<method>
+parameter should be the name of the method to invoke, while the C<object> parameter
+should be a blessed object on which the method will be invoked. The optional C<args> 
+parameter is an array reference of parameters to be pass to the callback, in addition 
+to those passed into the C<invoke> method.
+
+=cut
 
 sub new {
     my $proto = shift;
@@ -40,6 +96,14 @@ sub new {
     return $self;
 }
 
+=item $cb->invoke(@args)
+
+Invokes the callback. The argument list passed to the callback
+is a combination of the arguments supplied in the callback
+constructor, followed by the arguments supplied in the C<invoke>
+method.
+
+=cut
 
 sub invoke {
     my $self = shift;
@@ -57,3 +121,22 @@ sub invoke {
 }
 
 1;
+
+__END__
+
+=back
+
+=head1 AUTHOR
+
+Daniel P. Berrange.
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2006 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Reactor>
+
+=cut
+

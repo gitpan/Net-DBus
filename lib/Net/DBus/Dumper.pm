@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Dumper.pm,v 1.6 2005/10/23 16:30:42 dan Exp $
+# $Id: Dumper.pm,v 1.9 2006/01/27 15:34:23 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Dumper - stringify DBus objects suitable for printing
+Net::DBus::Dumper - Stringify Net::DBus objects suitable for printing
 
 =head1 SYNOPSIS
 
@@ -85,7 +85,6 @@ use vars qw(@EXPORT);
 
 @EXPORT = qw(dbus_dump);
 
-=pod
 
 =item my @data = dbus_dump($object);
 
@@ -197,12 +196,17 @@ sub _dbus_dump_bus {
     return @data;
 }
 
+1;
+
 =pod
+
+=back
 
 =head1 BUGS
 
 It should print out a list of object paths registered against a
-service
+service, but this only currently works for service implemented
+in Perl
 
 =head1 SEE ALSO
 

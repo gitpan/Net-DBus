@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Value.pm,v 1.5 2005/12/05 20:04:06 dan Exp $
+# $Id: Value.pm,v 1.7 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Binding::Value - a strongly typed data value
+Net::DBus::Binding::Value - Strongly typed data value
 
 =head1 SYNOPSIS
 
@@ -32,7 +32,6 @@ Net::DBus::Binding::Value - a strongly typed data value
   # Call a method with passing an int32
   $object->doit(dint32("3"));
 
- 
 =head1 DESCRIPTION
 
 This module provides a simple wrapper around a raw Perl value,
@@ -53,6 +52,15 @@ package Net::DBus::Binding::Value;
 use strict;
 use warnings;
 
+=item my $value = Net::DBus::Binding::Value->new($type, $value);
+
+Creates a wrapper for the perl value C<$value> marking it as having
+the dbus data type C<$type>. It is not neccessary to call this method
+directly, instead the data typing methods in the L<Net::DBus> object
+should be used.
+
+=cut
+
 sub new {
     my $class = shift;
     my $self = [];
@@ -65,11 +73,23 @@ sub new {
     return $self;
 }
 
+=item my $raw = $value->value
+
+Returns the raw perl value wrapped by this object
+
+=cut
 
 sub value {
     my $self = shift;
     return $self->[1];
 }
+
+=item my $type = $value->type
+
+Returns the dbus data type this value is marked
+as having
+
+=cut
 
 sub type {
     my $self = shift;

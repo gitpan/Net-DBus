@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Connection.pm,v 1.5 2005/11/21 10:55:44 dan Exp $
+# $Id: Connection.pm,v 1.8 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
@@ -79,8 +79,6 @@ use Carp;
 use Net::DBus;
 use Net::DBus::Binding::Message::MethodReturn;
 
-=pod
-
 =item my $con = Net::DBus::Binding::Connection->new(address => "unix:path=/path/to/socket");
 
 Creates a new connection to the remove server specified by
@@ -105,8 +103,6 @@ sub new {
 }
 
 
-=pod
-
 =item $status = $con->is_connected();
 
 Returns zero if the connection has been disconnected,
@@ -119,8 +115,6 @@ sub is_connected {
     
     return $self->{connection}->dbus_connection_get_is_connected();
 }
-
-=pod
 
 =item $status = $con->is_authenticated();
 
@@ -137,8 +131,6 @@ sub is_authenticated {
 }
 
 
-=pod
-
 =item $con->disconnect()
 
 Closes this connection to the remote host. This method
@@ -154,8 +146,6 @@ sub disconnect {
     $self->{connection}->dbus_connection_disconnect();
 }
 
-=pod
-
 =item $con->flush()
 
 Blocks execution until all data in the outgoing data
@@ -170,8 +160,6 @@ sub flush {
     $self->{connection}->dbus_connection_flush();
 }
 
-
-=pod
 
 =item $con->send($message)
 
@@ -192,8 +180,6 @@ sub send {
     
     return $self->{connection}->_send($msg->{message});
 }
-
-=pod
 
 =item my $reply = $con->send_with_reply_and_block($msg, $timeout);
 
@@ -225,8 +211,6 @@ sub send_with_reply_and_block {
 }
 
 
-=pod
-
 =item $con->dispatch;
 
 Dispatches any pending messages in the incoming queue
@@ -242,8 +226,6 @@ sub dispatch {
     $self->{connection}->_dispatch();
 }
 
-
-=pod
 
 =item $message = $con->borrow_message
 
@@ -263,8 +245,6 @@ sub borrow_message {
     return Net::DBus::Binding::Message->new(message => $msg);
 }
 
-=pod
-
 =item $con->return_message($msg)
 
 Replaces a previously borrowed message in the incoming
@@ -281,8 +261,6 @@ sub return_message {
 }
 
 
-=pod
-
 =item $con->steal_message($msg)
 
 Permanently remove a borrowed message from the incoming
@@ -297,8 +275,6 @@ sub steal_message {
     
     $self->{connection}->dbus_connection_steal_borrowed_message($msg->{message});
 }
-
-=pod
 
 =item $msg = $con->pop_message();
 
@@ -316,8 +292,6 @@ sub pop_message {
     my $msg = $self->{connection}->dbus_connection_pop_message();
     return Net::DBus::Binding::Message->new(message => $msg);
 }
-
-=pod
 
 =item $con->set_watch_callbacks(\&add_watch, \&remove_watch, \&toggle_watch);
 
@@ -344,8 +318,6 @@ sub set_watch_callbacks {
     $self->{connection}->_set_watch_callbacks();
 }
 
-=pod
-
 =item $con->set_timeout_callbacks(\&add_timeout, \&remove_timeout, \&toggle_timeout);
 
 Register a set of callbacks for adding, removing & updating 
@@ -371,8 +343,6 @@ sub set_timeout_callbacks {
     $self->{connection}->_set_timeout_callbacks();
 }
 
-=pod
-
 =item $con->register_object_path($path, \&handler)
 
 Registers a handler for messages whose path matches
@@ -395,12 +365,50 @@ sub register_object_path {
 
 	&$code($con, Net::DBus::Binding::Message->new(message => $msg));
     };
-
     $self->{connection}->_register_object_path($path, $callback);
 }
 
+=item $con->unregister_object_path($path)
 
-=pod
+Unregisters the handler associated with the object path C<$path>. The
+handler would previously have been registered with the C<register_object_path>
+or C<register_fallback> methods.
+
+=cut
+
+sub unregister_object_path {
+    my $self = shift;
+    my $path = shift;
+    $self->{connection}->_unregister_object_path($path);
+}
+
+
+=item $con->register_fallback($path, \&handler)
+
+Registers a handler for messages whose path starts with 
+the prefix specified in the C<$path> parameter. The supplied
+code reference will be invoked with two parameters, the
+connection object on which the message was received,
+and the message to be processed (an instance of the
+C<Net::DBus::Binding::Message> class).
+
+=cut
+
+sub register_fallback {
+    my $self = shift;
+    my $path = shift;
+    my $code = shift;
+
+    my $callback = sub {
+	my $con = shift;
+	my $msg = shift;
+
+	&$code($con, Net::DBus::Binding::Message->new(message => $msg));
+    };
+
+    $self->{connection}->_register_fallback($path, $callback);
+}
+
 
 =item $con->set_max_message_size($bytes)
 
@@ -418,8 +426,6 @@ sub set_max_message_size {
     $self->{connection}->dbus_connection_set_max_message_size($size);
 }
 
-=pod
-
 =item $bytes = $con->get_max_message_size();
 
 Retrieves the maximum allowable incoming
@@ -433,8 +439,6 @@ sub get_max_message_size {
     
     return $self->{connection}->dbus_connection_get_max_message_size;
 }
-
-=pod
 
 =item $con->set_max_received_size($bytes)
 
@@ -454,8 +458,6 @@ sub set_max_received_size {
     $self->{connection}->dbus_connection_set_max_received_size($size);
 }
 
-=pod
-
 =item $bytes $con->get_max_received_size()
 
 Retrieves the maximum incoming message queue size.
@@ -469,6 +471,16 @@ sub get_max_received_size {
     return $self->{connection}->dbus_connection_get_max_received_size;
 }
 
+
+=item $con->add_filter($coderef);
+
+Adds a filter to the connection which will be invoked whenever a
+message is received. The C<$coderef> should be a reference to a
+subroutine, which returns a true value if the message should be
+filtered out, or a false value if the normal message dispatch
+should be performed.
+
+=cut
 
 sub add_filter {
     my $self = shift;

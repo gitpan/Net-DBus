@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: DBus.xs,v 1.17 2005/11/21 10:54:48 dan Exp $
+ * $Id: DBus.xs,v 1.21 2006/02/03 13:30:14 dan Exp $
  */
 
 #include "EXTERN.h"
@@ -554,8 +554,31 @@ _register_object_path(con, path, code)
     CODE:
         SvREFCNT_inc(code);
         if (!(dbus_connection_register_object_path(con, path, &_path_callback_vtable, code))) {
-          croak("not enough memory to register object path");
+          croak("failure when registering object path");
         }
+
+void
+_unregister_object_path(con, path)
+        DBusConnection *con;
+        char *path;
+    CODE:
+        /* The associated data will be free'd by the previously
+           registered callback */
+        if (!(dbus_connection_unregister_object_path(con, path))) {
+          croak("failure when unregistering object path");
+        }
+
+void
+_register_fallback(con, path, code)
+        DBusConnection *con;
+        char *path;
+        SV *code;
+    CODE:
+        SvREFCNT_inc(code);
+        if (!(dbus_connection_register_fallback(con, path, &_path_callback_vtable, code))) {
+          croak("failure when registering fallback object path");
+        }
+
 
 void
 _add_filter(con, code)
@@ -624,6 +647,8 @@ dbus_bus_request_name(con, service_name)
           _croak_error(&error);
         }
         RETVAL = reply;
+    OUTPUT:
+        RETVAL
 
 void
 DESTROY(con)

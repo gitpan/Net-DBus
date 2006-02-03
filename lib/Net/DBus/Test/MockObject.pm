@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: MockObject.pm,v 1.1 2005/11/21 11:37:04 dan Exp $
+# $Id: MockObject.pm,v 1.5 2006/02/03 13:30:14 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Test::MockObject - a 'mock' object for use in test suites
+Net::DBus::Test::MockObject - Fake an object from the bus for unit testing
 
 =head1 SYNOPSIS
 
@@ -85,8 +85,6 @@ use warnings;
 use Net::DBus::Binding::Message::MethodReturn;
 use Net::DBus::Binding::Message::Error;
 
-=pod
-
 =item my $object = Net::DBus::Test::MockObject->new($service, $path, $interface);
 
 Create a new mock object, attaching to the service defined by the C<$service>
@@ -114,26 +112,59 @@ sub new {
 }
 
 
+=item my $service = $object->get_service
+
+Retrieves the L<Net::DBus::Service> object within which this
+object is exported.
+
+=cut
 
 sub get_service {
     my $self = shift;
     return $self->{service};
 }
 
+=item my $path = $object->get_object_path
+
+Retrieves the path under which this object is exported
+
+=cut
+
 sub get_object_path {
     my $self = shift;
     return $self->{object_path};
 }
+
+
+=item my $msg = $object->get_last_message
+
+Retrieves the last message processed by this object. The returned
+object is an instance of L<Net::DBus::Binding::Message>
+
+=cut
 
 sub get_last_message {
     my $self = shift;
     return $self->{message};
 }
 
+=item my $sig = $object->get_last_message_signature
+
+Retrieves the type signature of the last processed message.
+
+=cut
+
 sub get_last_message_signature {
     my $self = shift;
     return $self->{message}->get_signature;
 }
+
+=item my $value = $object->get_last_message_param
+
+Returns the first value supplied as an argument to the last
+processed message.
+
+=cut
 
 sub get_last_message_param {
     my $self = shift;
@@ -141,11 +172,50 @@ sub get_last_message_param {
     return $args[0];
 }
 
+=item my @values = $object->get_last_message_param_list
+
+Returns a list of all the values supplied as arguments to 
+the last processed message.
+
+=cut
+
 sub get_last_message_param_list {
     my $self = shift;
     my @args = $self->{message}->get_args_list;
     return \@args;
 }
+
+=item $object->seed_action($interface, $method, %action);
+
+Registers an action to be performed when a message corresponding
+to the method C<$method> within the interface C<$interface> is
+received. The C<%action> parameter can have a number of possible
+keys set:
+
+=over 4
+
+=item signals
+
+Causes a signal to be emitted when the method is invoked. The 
+value associated with this key should be an instance of the
+L<Net::DBus::Binding::Message::Signal> class.
+
+=item error
+
+Causes an error to be generated when the method is invoked. The
+value associated with this key should be a hash reference, with
+two elements. The first, C<name>, giving the error name, and the
+second, C<description>, providing the descriptive text.
+
+=item reply
+
+Causes a normal method return to be generated. The value associated
+with this key should be an array reference, whose elements are the
+values to be returned by the method.
+
+=back
+
+=cut
 
 sub seed_action {
     my $self = shift;
@@ -226,6 +296,8 @@ sub _dispatch {
 1;
 
 =pod
+
+=back
 
 =head1 BUGS
 

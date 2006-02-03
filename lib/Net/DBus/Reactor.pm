@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Reactor.pm,v 1.8 2005/11/21 10:53:53 dan Exp $
+# $Id: Reactor.pm,v 1.9 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
@@ -123,12 +123,13 @@ use Net::DBus::Binding::Watch;
 use Net::DBus::Callback;
 use Time::HiRes qw(gettimeofday);
 
-=pod
-
 =item my $reactor = Net::DBus::Reactor->new();
 
-Creates a new event loop ready for monitoring file
-handles, or generating timeouts.
+Creates a new event loop ready for monitoring file handles, or 
+generating timeouts. Except in very unsual circumstances (examples
+of which I can't think up) it is not neccessary or desriable to
+explicitly create new reactor instances. Instead call the L<main>
+method to get a handle to the singleton instance.
 
 =cut
 
@@ -153,14 +154,21 @@ sub new {
 
 use vars qw($main_reactor);
 
+=item $reactor->main
+
+Return a handle to the singleton instance of the reactor. This
+is the recommended way of getting hold of a reactor, since it
+removes the need for modules to pass around handles to their
+privately created reactors.
+
+=cut
+
 sub main {
     my $class = shift;
     $main_reactor = $class->new() unless defined $main_reactor;
     return $main_reactor;
 }
 
-
-=pod
 
 =item $reactor->manage($connection);
 
@@ -299,8 +307,6 @@ sub _manage_watch_toggle {
 }
 
 
-=pod
-
 =item $reactor->run();
 
 Starts the event loop monitoring any registered
@@ -313,15 +319,13 @@ disabled. The reactor can be explicitly stopped by
 calling the C<shutdown> method.
 
 =cut
- 
+
 sub run {
     my $self = shift;
 
     $self->{running} = 1;
     while ($self->{running}) { $self->step };
 }
-
-=pod
 
 =item $reactor->shutdown();
 
@@ -334,8 +338,6 @@ sub shutdown {
     my $self = shift;
     $self->{running} = 0;
 }
-
-=pod
 
 =item $reactor->step();
 
@@ -477,8 +479,6 @@ sub _dispatch_hook {
 }
 
 
-=pod
-
 =item $reactor->add_read($fd, $callback[, $status]);
 
 Registers a file handle for monitoring of read
@@ -494,8 +494,6 @@ sub add_read {
     my $self = shift;
     $self->_add("read", @_);
 }
-
-=pod
 
 =item $reactor->add_write($fd, $callback[, $status]);
 
@@ -513,7 +511,6 @@ sub add_write {
     $self->_add("write", @_);
 }
 
-=pod
 
 =item $reactor->add_exception($fd, $callback[, $status]);
 
@@ -531,7 +528,6 @@ sub add_exception {
     $self->_add("exception", @_);
 }
 
-=pod
 
 =item my $id = $reactor->add_timeout($interval, $callback, $status);
 
@@ -569,7 +565,6 @@ sub add_timeout {
     return $key;
 }
 
-=pod
 
 =item $reactor->remove_timeout($id);
 
@@ -588,7 +583,6 @@ sub remove_timeout {
     $self->{timeouts}->[$key] = undef;
 }
 
-=pod
 
 =item $reactor->toggle_timeout($id, $status[, $interval]);
 
@@ -609,8 +603,6 @@ sub toggle_timeout {
     $self->{timeouts}->[$key]->{interval} = shift if @_;
 }
 
-
-=pod
 
 =item my $id = $reactor->add_hook($callback[, $status]);
 
@@ -645,8 +637,6 @@ sub add_hook {
 }
 
 
-=pod
-
 =item $reactor->remove_hook($id)
 
 Removes the previously registered hook identified
@@ -664,8 +654,6 @@ sub remove_hook {
 
     $self->{hooks}->[$key] = undef;
 }
-
-=pod
 
 =item $reactor->toggle_hook($id[, $status])
 
@@ -697,8 +685,6 @@ sub _add {
 	enabled => $enabled
 	};
 }
-
-=pod
 
 =item $reactor->remove_read($fd);
 
@@ -735,8 +721,6 @@ sub _remove {
 
     delete $self->{fds}->{$type}->{$fd};
 }
-
-=pod
 
 =item $reactor->toggle_read($fd, $status);
 

@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Object.pm,v 1.19 2005/11/21 10:53:31 dan Exp $
+# $Id: Object.pm,v 1.23 2006/02/03 13:30:14 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Exporter - exports methods and signals to the bus
+Net::DBus::Object - Provide objects to the bus for clients to use
 
 =head1 SYNOPSIS
 
@@ -62,10 +62,10 @@ Net::DBus::Exporter - exports methods and signals to the bus
   sub new {
       my $class = shift;
       my $service = shift;
-      my $self = $class->SUPER::new("/org/demo/HelloWorld", $service);
-      
+      my $self = $class->SUPER::new($service, "/org/demo/HelloWorld");
+
       bless $self, $class;
-      
+
       return $self;
   }
 
@@ -90,7 +90,7 @@ Net::DBus::Exporter - exports methods and signals to the bus
     $self->emit_signal("Greeting", "Goodbye $name");
     return "Said goodbye to $name";
   }
-  
+
 =head1 DESCRIPTION
 
 This the base of all objects which are exported to the
@@ -109,49 +109,6 @@ this exported.
 =head1 METHODS
 
 =over 4
-
-=item my $object = Net::DBus::Object->new($path, $service)
-
-This creates a new DBus object with an path of C<$path>
-registered within the service C<$service>. The C<$path>
-parameter should be a string complying with the usual
-DBus requirements for object paths, while the C<$service>
-parameter should be an instance of L<Net::DBus::Service>.
-The latter is typically obtained by calling the C<export_service>
-method on the L<Net::DBus> object.
-
-=item my $service = $self->get_service
-
-Retrieves the L<Net::DBus::Service> object within which this
-object is exported.
-
-=item my $path = $self->get_object_path
-
-Retrieves the path under which this object is exported
-
-=item $self->emit_signal($name, @args);
-
-Emits a signal from the object, with a name of C<$name>. The
-signal and the data types of the arguments C<@args> must have 
-been registered with L<Net::DBus::Exporter> by calling the 
-C<dbus_signal> method. The signal will be broadcast to all
-clients on the bus.
-
-=item $self->emit_signal_to($name, $client, @args);
-
-Emits a signal from the object, with a name of C<$name>. The
-signal and the data types of the arguments C<@args> must have 
-been registered with L<Net::DBus::Exporter> by calling the 
-C<dbus_signal> method. The signal will be sent only to the
-client named by the C<$client> parameter.
-
-
-=back
-
-=head1 SEE ALSO
-
-L<Net::DBus>, L<Net::DBus::Service>, L<Net::DBus::RemoteObject>,
-L<Net::DBus::Exporter>.
 
 =cut
 
@@ -181,49 +138,161 @@ dbus_method("Introspect", [], ["string"]);
 dbus_method("Get", ["string", "string"], ["variant"], "org.freedesktop.DBus.Properties");
 dbus_method("Set", ["string", "string", "variant"], [], "org.freedesktop.DBus.Properties");
 
+=item my $object = Net::DBus::Object->new($service, $path)
+
+This creates a new DBus object with an path of C<$path>
+registered within the service C<$service>. The C<$path>
+parameter should be a string complying with the usual
+DBus requirements for object paths, while the C<$service>
+parameter should be an instance of L<Net::DBus::Service>.
+The latter is typically obtained by calling the C<export_service>
+method on the L<Net::DBus> object.
+
+=cut
+
 sub new {
     my $class = shift;
-    my $self = $class->_new(@_);
-    
-    $self->get_service->_register_object($self);
-
-    return $self;
-}
-
-sub _new {
-    my $class = shift;
     my $self = {};
+    
+    my $parent = shift;
+    my $path = shift;
+   
+    $self->{parent} = $parent;
+    if ($parent->isa(__PACKAGE__)) {
+	$self->{service} = $parent->get_service;
+	$self->{object_path} = $parent->get_object_path . $path;
+    } else {
+	$self->{service} = $parent;
+	$self->{object_path} = $path;
+    }
 
-    $self->{service} = shift;
-    $self->{object_path} = shift;
     $self->{interface} = shift;
     $self->{introspector} = undef;
     $self->{introspected} = 0;
     $self->{callbacks} = {};
+    $self->{children} = {};
 
     bless $self, $class;
-    
+
+    if ($self->{parent}->isa(__PACKAGE__)) {
+	$self->{parent}->_register_child($self);
+    } else {
+	$self->get_service->_register_object($self);
+    }
+
     return $self;
 }
 
 
+=item $object->disconnect();
+
+This method disconnects the object from the bus, such that it
+will no longer receive messages sent by other clients. Any
+child objects will be recursively disconnected too. After an
+object has been disconnected, it is possible for Perl to
+garbage collect the object instance. It will also make it 
+possible to connect a newly created object to the same path. 
+
+=cut
+
 sub disconnect {
     my $self = shift;
     
-    $self->get_service->_unregister_object($self);
+    return unless $self->{parent};
+
+    foreach my $child (keys %{$self->{children}}) {
+	$self->_unregister_child($self->{children}->{$child});
+    }
+
+    if ($self->{parent}->isa(__PACKAGE__)) {
+	$self->{parent}->_unregister_child($self);
+    } else {
+	$self->get_service->_unregister_object($self);
+    }
+    $self->{parent} = undef;
 }
 
+=item my $bool = $object->is_connected
+
+Returns a true value if the object is connected to the bus,
+and thus capable of being accessed by remote clients. Returns
+false if the object is disconnected & thus ready for garbage
+collection. All objects start off in the connected state, and
+will only transition if the C<disconnect> method is called.
+
+=cut
+
+sub is_connected {
+    my $self = shift;
+    
+    return 0 unless $self->{parent};
+    
+    if ($self->{parent}->isa(__PACKAGE__)) {
+	return $self->{parent}->is_connected;
+    }
+    return 1;
+}
+
+sub DESTROY {
+    my $self = shift;
+    # XXX there are some issues during global 
+    # destruction which need to be better figured
+    # out before this will work
+    #$self->disconnect;
+}
+
+sub _register_child {
+    my $self = shift;
+    my $object = shift;
+    
+    $self->get_service->_register_object($object);
+    $self->{children}->{$object->get_object_path} = $object;
+}
+
+
+sub _unregister_child {
+    my $self = shift;
+    my $object = shift;
+    
+    $self->get_service->_unregister_object($object);
+    delete $self->{children}->{$object->get_object_path};
+}
+
+=item my $service = $object->get_service
+
+Retrieves the L<Net::DBus::Service> object within which this
+object is exported.
+
+=cut
 
 sub get_service {
     my $self = shift;
     return $self->{service};
 }
 
+
+=item my $path = $object->get_object_path
+
+Retrieves the path under which this object is exported
+
+=cut
+
 sub get_object_path {
     my $self = shift;
     return $self->{object_path};
 }
 
+=item $object->emit_signal_in($name, $interface, $client, @args);
+
+Emits a signal from the object, with a name of C<$name>. If the
+C<$interface> parameter is defined, the signal will be scoped
+within that interface. If the C<$client> parameter is defined,
+the signal will be unicast to that client on the bus. The
+signal and the data types of the arguments C<@args> must have 
+been registered with L<Net::DBus::Exporter> by calling the 
+C<dbus_signal> method. 
+
+=cut
 
 sub emit_signal_in {
     my $self = shift;
@@ -231,6 +300,8 @@ sub emit_signal_in {
     my $interface = shift;
     my $destination = shift;
     my @args = @_;
+
+    die "object is disconnected from the bus" unless $self->is_connected;
 
     my $signal = Net::DBus::Binding::Message::Signal->new(object_path => $self->get_object_path,
 							  interface => $interface, 
@@ -255,6 +326,16 @@ sub emit_signal_in {
     }
 }
 
+=item $self->emit_signal_to($name, $client, @args);
+
+Emits a signal from the object, with a name of C<$name>. The
+signal and the data types of the arguments C<@args> must have 
+been registered with L<Net::DBus::Exporter> by calling the 
+C<dbus_signal> method. The signal will be sent only to the
+client named by the C<$client> parameter.
+
+=cut
+
 sub emit_signal_to {
     my $self = shift;
     my $name = shift;
@@ -277,6 +358,16 @@ sub emit_signal_to {
     $self->emit_signal_in($name, $interfaces[0], $destination, @args);
 }
 
+=item $self->emit_signal($name, @args);
+
+Emits a signal from the object, with a name of C<$name>. The
+signal and the data types of the arguments C<@args> must have 
+been registered with L<Net::DBus::Exporter> by calling the 
+C<dbus_signal> method. The signal will be broadcast to all
+clients on the bus.
+
+=cut
+
 sub emit_signal {
     my $self = shift;
     my $name = shift;
@@ -285,17 +376,40 @@ sub emit_signal {
     $self->emit_signal_to($name, undef, @args);
 }   
 
+=item $object->connect_to_signal_in($name, $interface, $coderef);
+
+Connects a callback to a signal emitted by the object. The C<$name>
+parameter is the name of the signal within the object, and C<$coderef>
+is a reference to an anonymous subroutine. When the signal C<$name>
+is emitted by the remote object, the subroutine C<$coderef> will be
+invoked, and passed the parameters from the signal. The C<$interface>
+parameter is used to specify the explicit interface defining the
+signal to connect to.
+
+=cut
 
 sub connect_to_signal_in {
     my $self = shift;
     my $name = shift;
     my $interface = shift;
     my $code = shift;
+
+    die "object is disconnected from the bus" unless $self->is_connected;
     
     $self->{callbacks}->{$interface} = {} unless
 	exists $self->{callbacks}->{$interface};
     $self->{callbacks}->{$interface}->{$name} = $code;
 }
+
+=item $object->connect_to_signal($name, $coderef);
+
+Connects a callback to a signal emitted by the object. The C<$name>
+parameter is the name of the signal within the object, and C<$coderef>
+is a reference to an anonymous subroutine. When the signal C<$name>
+is emitted by the remote object, the subroutine C<$coderef> will be
+invoked, and passed the parameters from the signal.
+
+=cut
 
 sub connect_to_signal {
     my $self = shift;
@@ -327,6 +441,16 @@ sub _dispatch {
     my $connection = shift;
     my $message = shift;
 
+    # Experiment in handling dispatch for child objects internally
+#     my $path = $message->get_path;
+#     while ($path ne $self->get_object_path) {
+# 	if (exists $self->{children}->{$path}) {
+# 	    $self->{children}->{$path}->_dispatch($connection, $message);
+# 	    return;
+# 	}
+# 	$path =~ s,/[^/]+$,,;
+#     }
+    
     my $reply;
     my $method_name = $message->get_member;
     my $interface = $message->get_interface;
@@ -478,10 +602,30 @@ sub _introspector {
     my $self = shift;
     
     if (!$self->{introspected}) {
-	$self->{introspector} = Net::DBus::Exporter::dbus_introspector($self);
+	$self->{introspector} = Net::DBus::Exporter::_dbus_introspector($self);
 	$self->{introspected} = 1;
     }
     return $self->{introspector};
 }
 
 1;
+
+
+=pod
+
+=back
+
+=head1 AUTHORS
+
+Daniel P. Berrange
+
+=head1 COPYRIGHT
+
+Copyright (C) 2005-2006 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus>, L<Net::DBus::Service>, L<Net::DBus::RemoteObject>,
+L<Net::DBus::Exporter>.
+
+=cut

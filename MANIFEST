@@ -1,4 +1,5 @@
 AUTHORS
+autobuild.sh
 CHANGES
 COPYING
 DBus.xs
@@ -33,16 +34,17 @@ lib/Net/DBus/RemoteService.pm
 lib/Net/DBus/Service.pm
 lib/Net/DBus/Test/MockConnection.pm
 lib/Net/DBus/Test/MockObject.pm
-lib/Net/DBus/Tutorial.pm
-lib/Net/DBus/Tutorial/ExportingObjects.pm
+lib/Net/DBus/Tutorial.pod
+lib/Net/DBus/Tutorial/ExportingObjects.pod
+lib/Net/DBus/Tutorial/UsingObjects.pod
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
-META.yml
 Net-DBus.spec.PL
 README
-rollingbuild.sh
 t/00-constants.t
+t/05-pod.t
+t/10-pod-coverage.t
 t/15-message.t
 t/20-callback.t
 t/25-reactor.t
@@ -56,3 +58,4 @@ t/60-object-props.t
 t/65-object-magic.t
 typemap
 Net-DBus.spec
+META.yml                                 Module meta-data (added by MakeMaker)

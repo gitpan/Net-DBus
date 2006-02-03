@@ -16,19 +16,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: RemoteObject.pm,v 1.18 2005/11/21 11:39:10 dan Exp $
+# $Id: RemoteObject.pm,v 1.20 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::RemoteObject - access objects on the bus
+Net::DBus::RemoteObject - Access objects provided on the bus
 
 =head1 SYNOPSIS
 
   my $service = $bus->get_service("org.freedesktop.DBus");
   my $object = $service->get_object("/org/freedesktop/DBus");
-  
+
   print "Names on the bus {\n";
   foreach my $name (sort $object->ListNames) {
       print "  ", $name, "\n";
@@ -61,8 +61,6 @@ our $AUTOLOAD;
 use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Introspector;
 
-=pod
-
 =item my $object = Net::DBus::RemoteObject->new($service, $object_path[, $interface]);
 
 Creates a new handle to a remote object. The C<$service> parameter is an instance
@@ -94,8 +92,6 @@ sub new {
     return $self;
 }
 
-=pod
-
 =item my $object = $object->as_interface($interface);
 
 Casts the object to a specific interface, returning a new instance of the
@@ -118,8 +114,6 @@ sub as_interface {
 		      $interface);
 }
 
-=pod
-
 =item my $service = $object->get_service
 
 Retrieves a handle for the remote service on which this object is
@@ -132,8 +126,6 @@ sub get_service {
     return $self->{service};
 }
 
-=pod
-
 =item my $path = $object->get_object_path
 
 Retrieves the unique path identifier for this object within the 
@@ -144,6 +136,27 @@ service.
 sub get_object_path {
     my $self = shift;
     return $self->{object_path};
+}
+
+=item my $object = $object->get_child_object($subpath, [$interface])
+
+Retrieves a handle to a child of this object, identified
+by the relative path C<$subpath>. The returned object
+is an instance of C<Net::DBus::RemoteObject>. The optional
+C<$interface> parameter can be used to immediately cast
+the object to a specific type.
+
+=cut
+
+sub get_child_object {
+    my $self = shift;
+    my $path = shift;
+    my $interface = @_ ? shift : undef;
+    my $fullpath = $self->{object_path} . $path;
+    
+    return $self->new($self->get_service,
+		      $fullpath,
+		      $interface);
 }
 
 sub _introspector {
@@ -187,8 +200,6 @@ sub _introspector {
     return $self->{introspector};
 }
 
-
-=pod
 
 =item $object->connect_to_signal($name, $coderef);
 
@@ -342,6 +353,8 @@ sub _call_method {
 	    object_path => $self->{object_path},
 	    method_name => $name,
 	    interface => $interface);
+
+    #$call->set_destination($self->get_service->get_owner_name);
 
     if ($ins) {
 	$ins->encode($call, "methods", $name, "params", @_);

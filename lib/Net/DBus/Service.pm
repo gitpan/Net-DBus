@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Service.pm,v 1.9 2005/10/15 15:39:35 dan Exp $
+# $Id: Service.pm,v 1.12 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Service - represents a service exported to the message bus
+Net::DBus::Service - Provide a service to the bus for clients to use
 
 =head1 SYNOPSIS
 
@@ -56,8 +56,6 @@ and export objects to the bus.
 
 package Net::DBus::Service;
 
-=pod
-
 =item my $service = Net::DBus::Service->new($bus, $name);
 
 Create a new service, attaching to the bus provided in
@@ -87,8 +85,6 @@ sub new {
     return $self;
 }
 
-=pod
-
 =item my $bus = $service->get_bus;
 
 Retrieves the L<Net::DBus> object to which this service is
@@ -101,9 +97,7 @@ sub get_bus {
     return $self->{bus};
 }
 
-=pod
-
-=item my $name = $service-.get_service_name
+=item my $name = $service->get_service_name
 
 Retrieves the qualified name by which this service is 
 known on the bus.
@@ -119,12 +113,21 @@ sub get_service_name {
 sub _register_object {
     my $self = shift;
     my $object = shift;
+    #my $wildcard = shift || 0;
     
-    $self->get_bus->get_connection->
-	register_object_path($object->get_object_path,
-			     sub {
-				 $object->_dispatch(@_);
-			     });
+#    if ($wildcard) {
+#	$self->get_bus->get_connection->
+#	    register_fallback($object->get_object_path,
+#			      sub {
+#				  $object->_dispatch(@_);
+#			      });
+#    } else {
+	$self->get_bus->get_connection->
+	    register_object_path($object->get_object_path,
+				 sub {
+				     $object->_dispatch(@_);
+				 });
+#    }
     
     if ($self->{exporter}) {
 	$self->{exporter}->register($object->get_object_path);
@@ -193,6 +196,8 @@ sub ListObjects {
     my @objs = sort { $a cmp $b } keys %{$self->{objects}};
     return \@objs;
 }
+
+1;
 
 =pod
 

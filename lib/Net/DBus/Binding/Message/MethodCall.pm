@@ -16,7 +16,31 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: MethodCall.pm,v 1.3 2005/10/15 13:31:42 dan Exp $
+# $Id: MethodCall.pm,v 1.5 2006/02/02 16:58:27 dan Exp $
+
+
+=pod
+
+=head1 NAME
+
+Net::DBus::Binding::Message::MethodCall - a message encoding a method call
+
+=head1 DESCRIPTION
+
+This module is part of the low-level DBus binding APIs, and
+should not be used by application code. No guarentees are made
+about APIs under the C<Net::DBus::Binding::> namespace being
+stable across releases.
+
+This module provides a convenience constructor for creating
+a message representing a method call. 
+
+=head1 METHODS
+
+=over 4
+
+=cut
+
 
 package Net::DBus::Binding::Message::MethodCall;
 
@@ -27,6 +51,18 @@ use Carp;
 
 use Net::DBus;
 use base qw(Exporter Net::DBus::Binding::Message);
+
+=item my $call = Net::DBus::Binding::Message::MethodCall->new(
+  service_name => $service, object_path => $object, 
+  interface => $interface, method_name => $name);
+
+Create a message representing a call on the object located at
+the path C<object_path> within the client owning the well-known
+name given by C<service_name>. The method to be invoked has
+the name C<method_name> within the interface specified by the
+C<interface> parameter.
+
+=cut
 
 sub new {
     my $proto = shift;
@@ -49,3 +85,21 @@ sub new {
 }
 
 1;
+
+__END__
+
+=back
+
+=head1 AUTHOR
+
+Daniel P. Berrange.
+
+=head1 COPYRIGHT
+
+Copyright (C) 2005-2006 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Message>
+
+=cut

@@ -1,4 +1,24 @@
 
+Changes since 0.32.3
+
+ - Constructor for Net::DBus::Object allows another Net::DBus::Object
+   to be passed instead of the Net::DBus::Service, to create child
+   objects specifying only a relative path.
+
+ - Updated minimum required DBus version to be 0.33 to gain access
+   to the unregister_object_path API
+
+ - Add a disconnect() method to Net::DBus::Object to make it possible 
+   to unregister object from the bus & thus make it possible to destroy 
+   objects which are no longer required / relevant.
+
+ - Unregister all child objects if we are unregistered ourselves
+
+ - Fix numerous POD errors identified by Test::Pod and podchecker
+
+ - Increase POD documentation to get 100% coverage of all APIs,
+   verified by Test::Pod::Coverage
+
 Changes since 0.32.2
 
  - Introspection data is used only as hint, so if an object

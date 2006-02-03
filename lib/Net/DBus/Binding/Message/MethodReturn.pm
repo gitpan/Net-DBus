@@ -16,7 +16,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: MethodReturn.pm,v 1.3 2005/10/15 13:31:42 dan Exp $
+# $Id: MethodReturn.pm,v 1.5 2006/02/02 16:58:27 dan Exp $
+
+=pod
+
+=head1 NAME
+
+Net::DBus::Binding::Message::MethodReturn - a message encoding a method return
+
+=head1 DESCRIPTION
+
+This module is part of the low-level DBus binding APIs, and
+should not be used by application code. No guarentees are made
+about APIs under the C<Net::DBus::Binding::> namespace being
+stable across releases.
+
+This module provides a convenience constructor for creating
+a message representing an method return.
+
+=head1 METHODS
+
+=over 4
+
+=cut
 
 package Net::DBus::Binding::Message::MethodReturn;
 
@@ -27,6 +49,14 @@ use Carp;
 
 use Net::DBus;
 use base qw(Exporter Net::DBus::Binding::Message);
+
+=item my $return = Net::DBus::Binding::Message::MethodReturn->new(
+    call => $method_call);
+
+Create a message representing a reply to the method call passed in
+the C<call> parameter.
+
+=cut
 
 sub new {
     my $proto = shift;
@@ -46,3 +76,21 @@ sub new {
 }
 
 1;
+
+__END__
+
+=back
+
+=head1 AUTHOR
+
+Daniel P. Berrange.
+
+=head1 COPYRIGHT
+
+Copyright (C) 2005-2006 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Message>
+
+=cut

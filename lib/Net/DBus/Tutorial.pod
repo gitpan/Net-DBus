@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Tutorial.pm,v 1.2 2005/10/15 13:31:42 dan Exp $
+# $Id: Tutorial.pod,v 1.2 2006/02/03 13:34:18 dan Exp $
 
 =pod
 
@@ -45,6 +45,8 @@ This tutorial cover how to use a service provided on the bus
 by another application. The topics covered include the basics
 of calling methods on remote objects, explicitly calling methods
 in particular interfaces, listening for signals.
+
+NB This tutorial is yet to be written.
 
 =back
 

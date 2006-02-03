@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Server.pm,v 1.4 2005/11/21 10:55:44 dan Exp $
+# $Id: Server.pm,v 1.5 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
@@ -49,7 +49,7 @@ Managing the server and new connections in an event loop
 
   sub new_connection {
       my $connection = shift;
-	
+
       $reactor->manage($connection);
   }
 
@@ -77,8 +77,6 @@ use Carp;
 
 use Net::DBus;
 use Net::DBus::Binding::Connection;
-
-=pod
 
 =item my $server = Net::DBus::Binding::Server->new(address => "unix:path=/path/to/socket");
 
@@ -113,8 +111,6 @@ sub new {
     return $self;
 }
 
-=pod
-
 =item $status = $server->is_connected();
 
 Returns zero if the server has been disconnected,
@@ -128,8 +124,6 @@ sub is_connected {
     
     return $self->{server}->dbus_server_get_is_connected();
 }
-
-=pod
 
 =item $server->disconnect()
 
@@ -146,8 +140,6 @@ sub disconnect {
     return $self->{server}->dbus_server_disconnect();
 }
 
-
-=pod
 
 =item $server->set_watch_callbacks(\&add_watch, \&remove_watch, \&toggle_watch);
 
@@ -175,8 +167,6 @@ sub set_watch_callbacks {
     $self->{server}->_set_watch_callbacks();
 }
 
-=pod
-
 =item $server->set_timeout_callbacks(\&add_timeout, \&remove_timeout, \&toggle_timeout);
 
 Register a set of callbacks for adding, removing & updating 
@@ -201,8 +191,6 @@ sub set_timeout_callbacks {
 
     $self->{server}->_set_timeout_callbacks();
 }
-
-=pod
 
 =item $server->set_connection_callback(\&handler)
 

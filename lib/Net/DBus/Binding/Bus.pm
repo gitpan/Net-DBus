@@ -16,7 +16,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Bus.pm,v 1.8 2005/10/15 13:31:42 dan Exp $
+# $Id: Bus.pm,v 1.11 2006/01/27 15:34:24 dan Exp $
+
+=pod
+
+=head1 NAME
+
+Net::DBus::Binding::Bus - Handle to a well-known message bus instance
+
+=head1 SYNOPSIS
+
+  use Net::DBus::Binding::Bus;
+
+  # Get a handle to the system bus
+  my $bus = Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SYSTEM);
+
+=head1 DESCRIPTION
+
+This is a specialization of the L<Net::DBus::Binding::Connection>
+module providing convenience constructor for connecting to one of
+the well-known bus types. There is no reason to use this module
+directly, instead get a handle to the bus with the C<session> or
+C<system> methods in L<Net::DBus>.
+
+=head1 METHODS
+
+=over 4
+
+=cut
 
 package Net::DBus::Binding::Bus;
 
@@ -28,6 +55,16 @@ use Carp;
 use Net::DBus;
 
 use base qw(Net::DBus::Binding::Connection);
+
+=item my $bus = Net::DBus::Binding::Bus->new(type => $type);
+
+=item my $bus = Net::DBus::Binding::Bus->new(address => $addr);
+
+Open a connection to a message bus, either a well known bus type
+specified using the C<type> parameter, or an arbitrary bus specified
+using the C<address> parameter.
+
+=cut
 
 sub new {
     my $proto = shift;
@@ -52,12 +89,29 @@ sub new {
 }
 
 
+=item $bus->request_name($service_name)
+
+Send a request to the bus registering the well known name 
+specified in the C<$service_name> parameter. If another client
+already owns the name, registration will be queued up, pending
+the exit of the other client.
+
+=cut
+
 sub request_name {
     my $self = shift;
     my $service_name = shift;
     
     $self->{connection}->dbus_bus_request_name($service_name);
 }
+
+=item my $name = $bus->get_unique_name
+
+Returns the unique name by which this processes' connection to
+the bus is known. Unique names are never re-used for the entire
+lifetime of the bus daemon.
+
+=cut
 
 sub get_unique_name {
     my $self = shift;
@@ -66,12 +120,26 @@ sub get_unique_name {
 }
 
 
+=item $bus->add_match($rule)
+
+Register a signal match rule with the bus controller, allowing
+matching broadcast signals to routed to this client.
+
+=cut
+
 sub add_match {
     my $self = shift;
     my $rule = shift;
     
     $self->{connection}->dbus_bus_add_match($rule);
 }
+
+=item $bus->remove_match($rule)
+
+Unregister a signal match rule with the bus controller, preventing
+further broadcast signals being routed to this client
+
+=cut
 
 sub remove_match {
     my $self = shift;
@@ -107,3 +175,20 @@ sub AUTOLOAD {
 
 1;
 
+=pod
+
+=back
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Connection>, L<Net::DBus>
+
+=head1 AUTHOR
+
+Daniel Berrange E<lt>dan@berrange.comE<gt>
+
+=head1 COPYRIGHT
+
+Copyright 2004-2005 by Daniel Berrange
+
+=cut

@@ -16,7 +16,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Watch.pm,v 1.2 2005/10/15 13:31:42 dan Exp $
+# $Id: Watch.pm,v 1.3 2006/01/27 15:34:24 dan Exp $
+
+=pod
+
+=head1 NAME
+
+Net::DBus::Binding::Watch - binding to the dbus watch API
+
+=cut
 
 package Net::DBus::Binding::Watch;
 
@@ -49,4 +57,20 @@ sub AUTOLOAD {
 }
 
 1;
-__END__
+
+=pod
+
+=head1 AUTHOR
+
+Daniel P. Berrange.
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2006 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Connection>
+
+=cut
+

@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: RemoteService.pm,v 1.7 2005/10/23 16:34:12 dan Exp $
+# $Id: RemoteService.pm,v 1.9 2006/01/27 15:34:24 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::RemoteService - access services on the bus
+Net::DBus::RemoteService - Access services provided on the bus
 
 =head1 SYNOPSIS
 
@@ -57,8 +57,6 @@ use Carp;
 
 use Net::DBus::RemoteObject;
 
-=pod
-
 =item my $service = Net::DBus::RemoteService->new($bus, $owner, $service_name);
 
 Creates a new handle for a remote service. The C<$bus> parameter is an
@@ -88,8 +86,6 @@ sub new {
 }
 
 
-=pod
-
 =item my $bus = $service->get_bus;
 
 Retrieves a handle for the bus to which this service is attached.
@@ -104,8 +100,6 @@ sub get_bus {
 }
 
 
-=pod
-
 =item my $service_name = $service->get_service_name
 
 Retrieves the name of the remote service as known to the bus.
@@ -116,8 +110,6 @@ sub get_service_name {
     my $self = shift;
     return $self->{service_name};
 }
-
-=pod
 
 =item my $owner_name = $service->get_owner_name;
 
@@ -130,8 +122,6 @@ sub get_owner_name {
     my $self = shift;
     return $self->{owner_name};
 }
-
-=pod
 
 =item my $object = $service->get_object($object_path[, $interface]);
 

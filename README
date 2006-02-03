@@ -9,7 +9,7 @@ project website at:
 
   http://www.freedesktop.org/software/dbus/
 
-This version operates against DBus 0.32, through 0.51, and 
+This version operates against DBus 0.33, through 0.60, and 
 possibly later versions, if there have been no serious API 
 changes.
 
@@ -55,6 +55,8 @@ has minimal external dependancies:
 And to run the test suite:
 
   Test::More
+  Test::Pod (optional, but recommended)
+  Test::Pod::Coverage (optional, but recommended)
 
 Although they are not part of the base Perl distribution, most 
 OS distributor will already provide addon packages containing
@@ -91,18 +93,18 @@ patch is as follows:
   * Rename your working directory to have '-new' 
     extension: 
 
-        mv DBus-0.32.0 DBus-0.32.0-new
+        mv DBus-0.33.1 DBus-0.33.1-new
 
   * Extract a pristine copy of the source:
 
-        gunzip -c DBus-0.32.0.tar.gz | tar xf -
-        mv DBus-0.32.0 DBus-0.32.0-orig
+        gunzip -c DBus-0.33.1.tar.gz | tar xf -
+        mv DBus-0.33.1 DBus-0.33.1-orig
 
   * Generate the patch:
 
-        diff -ruN DBus-0.32.0-orig DBus-0.32.0-new \
-          > DBus-0.32.0-[something].patch
-        gzip DBus-0.32.0-[something].patch
+        diff -ruN DBus-0.33.1-orig DBus-0.33.1-new \
+          > DBus-0.33.1-[something].patch
+        gzip DBus-0.33.1-[something].patch
 
 
 Send the resulting to .patch.gz file directly to 
@@ -111,8 +113,9 @@ Daniel Berrange <dan at berrange dot com>
 COPYRIGHT AND LICENCE
 ---------------------
 
-Copyright (C) 2004-2005 Daniel Berrange
+Copyright (C) 2004-2006 Daniel Berrange
 
 This library is provided under the terms of the GNU GPL 
 
 -- End
+

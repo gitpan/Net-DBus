@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Iterator.pm,v 1.14 2005/11/21 11:39:51 dan Exp $
+# $Id: Iterator.pm,v 1.16 2006/02/03 13:30:14 dan Exp $
 
 =pod
 
@@ -86,8 +86,6 @@ BEGIN {
   }
 }
 
-=pod
-
 =item $res = $iter->has_next()
 
 Determines if there are any more fields in the message
@@ -140,14 +138,16 @@ message iterator
 =item $iter->append_int64($val);
 
 Read or write a signed 64 bit value from/to the
-message iterator
+message iterator. An error will be raised if this
+build of Perl does not support 64 bit integers
 
 =item my $val = $iter->get_uint64()
 
 =item $iter->append_uint64($val);
 
 Read or write an unsigned 64 bit value from/to the
-message iterator
+message iterator. An error will be raised if this
+build of Perl does not support 64 bit integers
 
 =item my $val = $iter->get_double()
 
@@ -182,6 +182,17 @@ sub append_uint64 {
     $self->_append_uint64(shift);
 }
 
+=item my $value = $iter->get()
+
+=item my $value = $iter->get($type);
+
+Get the current value pointed to by this iterator. If the optional
+C<$type> parameter is supplied, the wire type will be compared with
+the desired type & a warning output if their differ. The C<$type>
+value must be one of the C<Net::DBus::Binding::Message::TYPE*>
+constants.
+
+=cut
 
 sub get {
     my $self = shift;    
@@ -254,6 +265,12 @@ sub get {
     }
 }
 
+=item my $hashref = $iter->get_dict()
+
+If the iterator currently points to a dictionary value, unmarshalls
+and returns the value as a hash reference. 
+
+=cut
 
 sub get_dict {
     my $self = shift;
@@ -273,6 +290,13 @@ sub get_dict {
     }
     return $dict;
 }
+
+=item my $hashref = $iter->get_array()
+
+If the iterator currently points to an array value, unmarshalls
+and returns the value as a array reference. 
+
+=cut
 
 sub get_array {
     my $self = shift;
@@ -294,12 +318,28 @@ sub get_array {
     return $array;
 }
 
+=item my $hashref = $iter->get_variant()
+
+If the iterator currently points to a variant value, unmarshalls
+and returns the value contained in the variant.
+
+=cut
+
 sub get_variant {
     my $self = shift;
 
     my $iter = $self->_recurse();
     return $iter->get();
 }
+
+
+=item my $hashref = $iter->get_struct()
+
+If the iterator currently points to an struct value, unmarshalls
+and returns the value as a array reference. The values in the array 
+correspond to members of the struct.
+
+=cut
 
 sub get_struct {
     my $self = shift;
@@ -315,6 +355,26 @@ sub get_struct {
     }
     return $struct;
 }
+
+=item $iter->append($value)
+
+=item $iter->append($value, $type)
+
+Appends a value to the message associated with this iterator. The
+value is marshalled into wire format, according to the following
+rules.
+
+If the C<$value> is an instance of L<Net::DBus::Binding::Value>,
+the embedded data type is used.
+
+If the C<$type> parameter is supplied, that is taken to represent
+the data type. The type must be one of the C<Net::DBus::Binding::Message::TYPE_*>
+constants.
+
+Otherwise, the data type is chosen to be a string, dict or array
+according to the perl data types SCALAR, HASH or ARRAY.
+
+=cut
 
 sub append {
     my $self = shift;
@@ -373,6 +433,17 @@ sub append {
     }
 }
 
+
+=item my $type = $iter->guess_type($value)
+
+Make a best guess at the on the wire data type to use for 
+marshalling C<$value>. If the value is a hash reference,
+the dictionary type is returned; if the value is an array
+reference the array type is returned; otherwise the string
+type is returned.
+
+=cut
+
 sub guess_type {
     my $self = shift;
     my $value = shift;
@@ -397,6 +468,13 @@ sub guess_type {
 	return &Net::DBus::Binding::Message::TYPE_STRING;
     }
 }
+
+=item my $sig = $iter->get_signature($type)
+
+Given a data type representation, construct a corresponding 
+signature string
+
+=cut
 
 sub get_signature {
     my $self = shift;
@@ -430,6 +508,13 @@ sub get_signature {
     return $sig;
 }
 
+=item $iter->append_array($value, $type)
+
+Append an array of values to the message. The C<$value> parameter
+must be an array reference, whose elements all have the same data
+type specified by the C<$type> parameter.
+
+=cut
 
 sub append_array {
     my $self = shift;
@@ -450,6 +535,15 @@ sub append_array {
 }
 
 
+=item $iter->append_struct($value, $type)
+
+Append a struct to the message. The C<$value> parameter
+must be an array reference, whose elements correspond to
+members of the structure. The C<$type> parameter encodes
+the type of each member of the struct.
+
+=cut
+
 sub append_struct {
     my $self = shift;
     my $struct = shift;
@@ -468,6 +562,14 @@ sub append_struct {
 
     $self->_close_container($iter);
 }
+
+=item $iter->append_dict($value, $type)
+
+Append a dictionary to the message. The C<$value> parameter
+must be an hash reference.The C<$type> parameter encodes
+the type of the key and value of the hash.
+
+=cut
 
 sub append_dict {
     my $self = shift;
@@ -493,6 +595,14 @@ sub append_dict {
     $self->_close_container($iter);
 }
 
+=item $iter->append_variant($value)
+
+Append a value to the message, encoded as a variant type. The
+C<$value> can be of any type, however, the variant will be
+encoded as either a string, dictionary or array according to
+the rules of the C<guess_type> method.
+
+=cut
 
 sub append_variant {
     my $self = shift;
@@ -506,6 +616,19 @@ sub append_variant {
 }
 
 
+=item my $type = $iter->get_arg_type
+
+Retrieves the type code of the value pointing to by this iterator.
+The returned code will correspond to one of the constants
+C<Net::DBus::Binding::Message::TYPE_*>
+
+=item my $type = $iter->get_element_type
+
+If the iterator points to an array, retrieves the type code of 
+array elements. The returned code will correspond to one of the 
+constants C<Net::DBus::Binding::Message::TYPE_*>
+
+=cut
 
 1;
 

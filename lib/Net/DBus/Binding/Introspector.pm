@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Introspector.pm,v 1.11 2005/11/21 11:36:12 dan Exp $
+# $Id: Introspector.pm,v 1.14 2006/02/03 13:30:14 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Introspector - handling of object introspection data
+Net::DBus::Binding::Introspector - Handler for object introspection data
 
 =head1 SYNOPSIS
 
@@ -42,7 +42,7 @@ Net::DBus::Introspector - handling of object introspection data
 This class is responsible for managing introspection data, and
 answering questions about it. This is not intended for use by 
 application developers, whom should instead consult the higher
-level API in L<Net::DBus::Exporter>
+level API in L<Net::DBus::Exporter>.
 
 =head1 METHODS
 
@@ -107,6 +107,16 @@ our %compound_type_map = (
   "dict" => &Net::DBus::Binding::Message::TYPE_DICT_ENTRY,
 );
 
+=item my $ins = Net::DBus::Binding::Introspector->new(object_path => $object_path,
+                                                      xml => $xml);
+
+Creates a new introspection data manager for the object registered
+at the path specified for the C<object_path> parameter. The optional
+C<xml> parameter can be used to pre-load the manager with introspection
+metadata from an XML document.
+
+=cut
+
 
 sub new {
     my $proto = shift;
@@ -148,6 +158,12 @@ sub new {
     return $self;
 }
 
+=item $ins->add_interface($name)
+
+Register the object as providing an interface with the name C<$name>
+
+=cut
+
 sub add_interface {
     my $self = shift;
     my $name = shift;
@@ -159,12 +175,26 @@ sub add_interface {
     } unless exists $self->{interfaces}->{$name};
 }
 
+=item my $bool = $ins->has_interface($name)
+
+Return a true value if the object is registered as providing
+an interface with the name C<$name>; returns false otherwise.
+
+=cut
+
 sub has_interface {
     my $self = shift;
     my $name = shift;
     
     return exists $self->{interfaces}->{$name} ? 1 : 0;
 }
+
+=item my @interfaces = $ins->has_method($name)
+
+Return a list of all interfaces provided by the object, which
+contain a method called C<$name>. This may be an empty list.
+
+=cut
 
 sub has_method {
     my $self = shift;
@@ -180,6 +210,14 @@ sub has_method {
     return @interfaces;
 }
 
+
+=item my @interfaces = $ins->has_signal($name)
+
+Return a list of all interfaces provided by the object, which
+contain a signal called C<$name>. This may be an empty list.
+
+=cut
+
 sub has_signal {
     my $self = shift;
     my $name = shift;
@@ -192,6 +230,14 @@ sub has_signal {
     }
     return @interfaces;
 }
+
+
+=item my @interfaces = $ins->has_property($name)
+
+Return a list of all interfaces provided by the object, which
+contain a property called C<$name>. This may be an empty list.
+
+=cut
 
 
 sub has_property {
@@ -215,6 +261,17 @@ sub has_property {
 }
 
 
+=item $ins->add_method($name, $params, $returns, $interface, $attributes);
+
+Register the object as providing a method called C<$name> accepting parameters
+whose types are declared by C<$params> and returning values whose type 
+are declared by C<$returns>. The method will be scoped to the inteface
+named by C<$interface>. The C<$attributes> parameter is a hash reference
+for annotating the method.
+
+=cut
+
+
 sub add_method {
     my $self = shift;
     my $name = shift;
@@ -232,6 +289,17 @@ sub add_method {
     };
 }
 
+
+=item $ins->add_signal($name, $params, $interface, $attributes);
+
+Register the object as providing a signal called C<$name> with parameters
+whose types are declared by C<$params>. The signal will be scoped to the inteface
+named by C<$interface>. The C<$attributes> parameter is a hash reference
+for annotating the signal.
+
+=cut
+
+
 sub add_signal {
     my $self = shift;
     my $name = shift;
@@ -245,6 +313,16 @@ sub add_signal {
 	deprecated => $attributes->{deprecated} ? 1 : 0,
     };
 }
+
+=item $ins->add_property($name, $type, $access, $interface, $attributes);
+
+Register the object as providing a property called C<$name> with a type
+of C<$type>. The C<$access> parameter can be one of C<read>, C<write>,
+or C<readwrite>. The property will be scoped to the inteface
+named by C<$interface>. The C<$attributes> parameter is a hash reference
+for annotating the signal.
+
+=cut
 
 
 sub add_property {
@@ -263,6 +341,13 @@ sub add_property {
     };
 }
 
+=item my $boolean = $ins->is_method_deprecated($name, $interface)
+
+Returns a true value if the method called C<$name> in the interface
+C<$interface> is marked as deprecated
+
+=cut
+
 sub is_method_deprecated {
     my $self = shift;
     my $name = shift;
@@ -274,6 +359,12 @@ sub is_method_deprecated {
     return 0;
 }
 
+=item my $boolean = $ins->is_signal_deprecated($name, $interface)
+
+Returns a true value if the signal called C<$name> in the interface
+C<$interface> is marked as deprecated
+
+=cut
 
 sub is_signal_deprecated {
     my $self = shift;
@@ -286,6 +377,12 @@ sub is_signal_deprecated {
     return 0;
 }
 
+=item my $boolean = $ins->is_property_deprecated($name, $interface)
+
+Returns a true value if the property called C<$name> in the interface
+C<$interface> is marked as deprecated
+
+=cut
 
 sub is_property_deprecated {
     my $self = shift;
@@ -298,6 +395,12 @@ sub is_property_deprecated {
     return 0;
 }
 
+=item my $boolean = $ins->does_method_reply($name, $interface)
+
+Returns a true value if the method called C<$name> in the interface
+C<$interface> will generate a reply. Returns a false value otherwise.
+
+=cut
 
 sub does_method_reply {
     my $self = shift;
@@ -310,6 +413,12 @@ sub does_method_reply {
     return 1;
 }
 
+=item my @names = $ins->list_interfaces
+
+Returns a list of all interfaces registered as being provided
+by the object.
+
+=cut
 
 sub list_interfaces {
     my $self = shift;
@@ -317,11 +426,25 @@ sub list_interfaces {
     return keys %{$self->{interfaces}};
 }
 
+=item my @names = $ins->list_methods($interface)
+
+Returns a list of all methods registered as being provided
+by the object, within the interface C<$interface>.
+
+=cut
+
 sub list_methods {
     my $self = shift;
     my $interface = shift;
     return keys %{$self->{interfaces}->{$interface}->{methods}};
 }
+
+=item my @names = $ins->list_signals($interface)
+
+Returns a list of all signals registered as being provided
+by the object, within the interface C<$interface>.
+
+=cut
 
 sub list_signals {
     my $self = shift;
@@ -329,16 +452,37 @@ sub list_signals {
     return keys %{$self->{interfaces}->{$interface}->{signals}};
 }
 
+=item my @names = $ins->list_properties($interface)
+
+Returns a list of all properties registered as being provided
+by the object, within the interface C<$interface>.
+
+=cut
+
 sub list_properties {
     my $self = shift;
     my $interface = shift;
     return keys %{$self->{interfaces}->{$interface}->{props}};
 }
 
+=item my $path = $ins->get_object_path
+
+Returns the path of the object associated with this introspection
+data
+
+=cut
+
 sub get_object_path {
     my $self = shift;
     return $self->{object_path};
 }
+
+=item my @types = $ins->get_method_params($interface, $name)
+
+Returns a list of declared data types for parameters of the
+method called C<$name> within the interface C<$interface>.
+
+=cut
 
 sub get_method_params {
     my $self = shift;
@@ -347,12 +491,26 @@ sub get_method_params {
     return @{$self->{interfaces}->{$interface}->{methods}->{$method}->{params}};
 }
 
+=item my @types = $ins->get_method_returns($interface, $name)
+
+Returns a list of declared data types for return values of the
+method called C<$name> within the interface C<$interface>.
+
+=cut
+
 sub get_method_returns {
     my $self = shift;
     my $interface = shift;
     my $method = shift;
     return @{$self->{interfaces}->{$interface}->{methods}->{$method}->{returns}};
 }
+
+=item my @types = $ins->get_signal_params($interface, $name)
+
+Returns a list of declared data types for values associated with the
+signal called C<$name> within the interface C<$interface>.
+
+=cut
 
 sub get_signal_params {
     my $self = shift;
@@ -361,6 +519,12 @@ sub get_signal_params {
     return @{$self->{interfaces}->{$interface}->{signals}->{$signal}->{params}};
 }
 
+=item my $type = $ins->get_property_type($interface, $name)
+
+Returns the declared data type for property called C<$name> within 
+the interface C<$interface>.
+
+=cut
 
 sub get_property_type {
     my $self = shift;
@@ -369,6 +533,12 @@ sub get_property_type {
     return $self->{interfaces}->{$interface}->{props}->{$prop}->{type};
 }
 
+=item my $bool = $ins->is_property_readable($interface, $name);
+
+Returns a true value if the property called C<$name> within  the 
+interface C<$interface> can have its value read.
+
+=cut
 
 sub is_property_readable {
     my $self = shift;
@@ -378,6 +548,12 @@ sub is_property_readable {
     return $access eq "readwrite" || $access eq "read" ? 1 : 0;
 }
 
+=item my $bool = $ins->is_property_writable($interface, $name);
+
+Returns a true value if the property called C<$name> within  the 
+interface C<$interface> can have its value written to.
+
+=cut
 
 sub is_property_writable {
     my $self = shift;
@@ -603,6 +779,13 @@ sub _parse_property {
     };
 }
 
+=item my $xml = $ins->format
+
+Return a string containing an XML document representing the
+state of the introspection data.
+
+=cut
+
 sub format {
     my $self = shift;
     
@@ -611,6 +794,15 @@ sub format {
     
     return $xml . $self->to_xml("");
 }
+
+=item my $xml_fragment = $ins->to_xml
+
+Returns a string containing an XML fragment representing the
+state of the introspection data. This is basically the same
+as the C<format> method, but without the leading doctype 
+declaration.
+
+=cut
 
 sub to_xml {
     my $self = shift;
@@ -685,6 +877,12 @@ sub to_xml {
     $xml .= $indent . "</node>\n";
 }
 
+=item $type = $ins->to_xml_type($type)
+
+Takes a text-based representation of a data type and returns
+the compact representation used in XML introspection data.
+
+=cut
 
 sub to_xml_type {
     my $self = shift;
@@ -724,6 +922,15 @@ sub to_xml_type {
     return $sig;
 }
 
+=item $ins->encode($message, $type, $name, $direction, @args)
+
+Append a set of values <@args> to a message object C<$message>.
+The C<$type> parameter is either C<signal> or C<method> and
+C<$direction> is either C<params> or C<returns>. The introspection
+data will be queried to obtain the declared data types & the 
+argument marshalling accordingly.
+
+=cut
 
 sub encode {
     my $self = shift;
@@ -769,13 +976,13 @@ sub encode {
 	unless $#types == $#args;
     
     my $iter = $message->iterator(1);
-    foreach my $t ($self->convert(@types)) {
+    foreach my $t ($self->_convert(@types)) {
 	$iter->append(shift @args, $t);
     }
 }
 
 
-sub convert {
+sub _convert {
     my $self = shift;
     my @in = @_;
 
@@ -784,7 +991,7 @@ sub convert {
 	if (ref($in) eq "ARRAY") {
 	    my @subtype = @{$in};
 	    shift @subtype;
-	    my @subout = $self->convert(@subtype);
+	    my @subout = $self->_convert(@subtype);
 	    die "unknown compound type " . $in->[0] unless
 		exists $compound_type_map{lc $in->[0]};
 	    push @out, [$compound_type_map{lc $in->[0]}, \@subout];
@@ -800,13 +1007,22 @@ sub convert {
 }
 
 
+=item my @args = $ins->decode($message, $type, $name, $direction)
+
+Unmarshalls the contents of a message object C<$message>.
+The C<$type> parameter is either C<signal> or C<method> and
+C<$direction> is either C<params> or C<returns>. The introspection
+data will be queried to obtain the declared data types & the 
+arguments unmarshalled accordingly.
+
+=cut
+
 sub decode {
     my $self = shift;
     my $message = shift;
     my $type = shift;
     my $name = shift;
     my $direction = shift;
-    my @args = @_;
 
     my $interface = $message->get_interface;
 
@@ -837,7 +1053,7 @@ sub decode {
 
     my $iter = $message->iterator;
     
-    my @rawtypes = $self->convert(@types);
+    my @rawtypes = $self->_convert(@types);
     my @ret;
     do {
 	my $type = shift @types;

@@ -46,7 +46,7 @@ dbus_method("NoArgsInterfaceAnnotate", [],["int32"], "org.example.OtherObject", 
 
 
 
-my $ins = Net::DBus::Exporter::dbus_introspector($obj);
+my $ins = Net::DBus::Exporter::_dbus_introspector($obj);
 
 is($ins->get_object_path, "/org/example/MyObject", "object path");
 ok($ins->has_interface("org.example.MyObject"), "interface registration");

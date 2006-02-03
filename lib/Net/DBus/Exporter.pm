@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# $Id: Exporter.pm,v 1.8 2005/11/21 11:37:56 dan Exp $
+# $Id: Exporter.pm,v 1.11 2006/02/03 13:43:50 dan Exp $
 
 =pod
 
 =head1 NAME
 
-Net::DBus::Exporter - exports methods and signals to the bus
+Net::DBus::Exporter - Export object methods and signals to the bus
 
 =head1 SYNOPSIS
 
@@ -47,7 +47,7 @@ Net::DBus::Exporter - exports methods and signals to the bus
   # parameter, and returning a single string, but put it
   # in the 'org.exaple.demo.Farewell' interface
   dbus_method("Goodbye", ["string"], ["string"], "org.example.demo.Farewell");
-  
+
 =head1 DESCRIPTION
 
 The C<Net::DBus::Exporter> module is used to export methods
@@ -220,6 +220,117 @@ is used.
 
 =over 4
 
+=cut
+
+package Net::DBus::Exporter;
+
+use vars qw(@ISA @EXPORT %dbus_exports %dbus_introspectors);
+
+use warnings;
+use strict;
+
+use Exporter;
+@ISA = qw(Exporter);
+
+@EXPORT = qw(dbus_method dbus_signal dbus_property);
+
+
+sub import {
+    my $class = shift;
+
+    my $caller = caller;
+    if (exists $dbus_exports{$caller}) {
+	warn "$caller is already registered with Net::DBus::Exporter";
+	return;
+    }
+
+    $dbus_exports{$caller} = {
+	methods => {},
+	signals => {},
+	props => {},
+    };
+    die "usage: use Net::DBus::Exporter 'interface-name';" unless @_;
+
+    my $interface = shift;
+    die "interface name '$interface' is not valid." .
+	"Names must consist of tokens using the characters a-z, A-Z, 0-9, _, " .
+	"with at least two tokens, separated by '.'\n"
+	unless $interface =~ /^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/;
+    $dbus_exports{$caller}->{interface} = $interface;
+
+    $class->export_to_level(1, "", @EXPORT);
+}
+
+sub _dbus_introspector {
+    my $object = shift;
+    my $class = shift;
+
+    $class = ref($object) unless $class;
+    die "no introspection data available for '" . 
+	$object->get_object_path . 
+	"' and object is not cast to any interface" unless $class;
+    
+    if (!exists $dbus_exports{$class}) {
+	# If this class has not been exported, lets look
+	# at the parent class & return its introspection
+        # data instead.
+	no strict 'refs';
+	if (defined (*{"${class}::ISA"})) {
+	    my @isa = @{"${class}::ISA"};
+	    foreach my $parent (@isa) {
+		# We don't recurse to Net::DBus::Object
+		# since we need to give sub-classes the
+		# choice of not supporting introspection
+		next if $parent eq "Net::DBus::Object";
+
+		my $ins = &_dbus_introspector($object, $parent);
+		if ($ins) {
+		    return $ins;
+		}
+	    }
+	}
+	return undef;
+    }
+
+    unless (exists $dbus_introspectors{$class}) {
+	my $is = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
+	
+	&_dbus_introspector_add(ref($object), $is);
+	$dbus_introspectors{$class} = $is;
+    }
+    
+    return $dbus_introspectors{$class};
+}
+
+sub _dbus_introspector_add {
+    my $class = shift;
+    my $introspector = shift;
+
+    my $exports = $dbus_exports{$class};
+    if ($exports) {
+	foreach my $method (keys %{$exports->{methods}}) {
+	    my ($params, $returns, $interface, $attributes) = @{$exports->{methods}->{$method}};
+	    $introspector->add_method($method, $params, $returns, $interface, $attributes);
+	}
+	foreach my $prop (keys %{$exports->{props}}) {
+	    my ($type, $access, $interface, $attributes) = @{$exports->{props}->{$prop}};
+	    $introspector->add_property($prop, $type, $access, $interface, $attributes);
+	}
+	foreach my $signal (keys %{$exports->{signals}}) {
+	    my ($params, $interface, $attributes) = @{$exports->{signals}->{$signal}};
+	    $introspector->add_signal($signal, $params, $interface, $attributes);
+	}
+    }
+    
+    if (defined (*{"${class}::ISA"})) {
+	no strict "refs";
+	my @isa = @{"${class}::ISA"};
+	foreach my $parent (@isa) {
+	    &_dbus_introspector_add($parent, $introspector);
+	}
+    }
+}
+
 =item dbus_method($name, $params, $returns, [\%annotations]);
 
 =item dbus_method($name, $params, $returns, $interface, [\%annotations]);
@@ -237,6 +348,77 @@ value. If it not possible to export a method which accepts a
 variable number of parameters, or returns a variable number of
 values.
 
+=cut
+
+sub dbus_method {
+    my $name = shift;
+    my $params = [];
+    my $returns = [];
+    my $caller = caller;
+    my $interface = $dbus_exports{$caller}->{interface};
+    my %attributes;
+    
+    if (@_ && ref($_[0]) eq "ARRAY") {
+	$params = shift;
+    }
+    if (@_ && ref($_[0]) eq "ARRAY") {
+	$returns = shift;
+    }
+    if (@_ && !ref($_[0])) {
+	$interface = shift;
+    }
+    if (@_ && ref($_[0]) eq "HASH") {
+	%attributes = %{$_[0]};
+    }
+
+    if (!$interface) {
+	die "interface not specified & no default interface defined";
+    }
+    
+    $dbus_exports{$caller}->{methods}->{$name} = [$params, $returns, $interface, \%attributes];
+}
+
+
+=item dbus_property($name, $type, $access, [\%attributes]);
+
+=item dbus_property($name, $type, $access, $interface, [\%attributes]);
+
+Exports a property called C<$name>, whose data type is C<$type>.
+If the C<$interface> parameter is provided, then the property is 
+associated with that interface, otherwise the default interface 
+for the calling package is used. 
+
+=cut
+
+sub dbus_property {
+    my $name = shift;
+    my $type = "string";
+    my $access = "readwrite";
+    my $caller = caller;
+    my $interface = $dbus_exports{$caller}->{interface};
+    my %attributes;
+    
+    if (@_ && !ref($_[0])) {
+	$type = shift;
+    }
+    if (@_ && !ref($_[0])) {
+	$access = shift;
+    }
+    if (@_ && !ref($_[0])) {
+	$interface = shift;
+    }
+    if ($_ && ref($_[0]) eq "HASH") {
+	%attributes = %{$_[0]};
+    }
+
+    if (!$interface) {
+	die "interface not specified & no default interface defined";
+    }
+    
+    $dbus_exports{$caller}->{props}->{$name} = [$type, $access, $interface, \%attributes];
+}
+
+
 =item dbus_signal($name, $params);
 
 =item dbus_signal($name, $params, $interface);
@@ -250,6 +432,34 @@ value for the C<$params> parameter should be an array reference
 with each element defining the data type of a parameter to the
 signal. Signals do not have return values. It not possible to 
 export a signal which has a variable number of parameters.
+
+=cut
+
+sub dbus_signal {
+    my $name = shift;
+    my $params = [];
+    my $caller = caller;
+    my $interface = $dbus_exports{$caller}->{interface};
+    my %attributes;
+    
+    if (@_ && ref($_[0]) eq "ARRAY") {
+	$params = shift;
+    }
+    if (@_ && !ref($_[0])) {
+	$interface = shift;
+    }
+    if (@_ && ref($_[0]) eq "HASH") {
+	%attributes = %{$_[0]};
+    }
+
+    if (!$interface) {
+	die "interface not specified & no default interface defined";
+    }
+
+    $dbus_exports{$caller}->{signals}->{$name} = [$params, $interface, \%attributes];
+}
+
+1;
 
 =back
 
@@ -319,203 +529,10 @@ return any value
 
 =head1 SEE ALSO
 
-L<Net::DBus::Object>
+L<Net::DBus::Object>, L<Net::DBus::Binding::Introspector>
 
 =head1 AUTHORS
 
-Daniel P, Berrange L<dan@berrange.com>
+Daniel P. Berrange <dan@berrange.com>
 
 =cut
-
-package Net::DBus::Exporter;
-
-use vars qw(@ISA @EXPORT %dbus_exports %dbus_introspectors);
-
-use warnings;
-use strict;
-
-use Exporter;
-@ISA = qw(Exporter);
-
-@EXPORT = qw(dbus_method dbus_signal dbus_property);
-
-
-sub import {
-    my $class = shift;
-
-    my $caller = caller;
-    if (exists $dbus_exports{$caller}) {
-	warn "$caller is already registered with Net::DBus::Exporter";
-	return;
-    }
-
-    $dbus_exports{$caller} = {
-	methods => {},
-	signals => {},
-	props => {},
-    };
-    die "usage: use Net::DBus::Exporter 'interface-name';" unless @_;
-
-    my $interface = shift;
-    die "interface name '$interface' is not valid." .
-	"Names must consist of tokens using the characters a-z, A-Z, 0-9, _, " .
-	"with at least two tokens, separated by '.'\n"
-	unless $interface =~ /^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/;
-    $dbus_exports{$caller}->{interface} = $interface;
-
-    $class->export_to_level(1, "", @EXPORT);
-}
-
-sub dbus_introspector {
-    my $object = shift;
-    my $class = shift;
-
-    $class = ref($object) unless $class;
-    die "no introspection data available for '" . 
-	$object->get_object_path . 
-	"' and object is not cast to any interface" unless $class;
-    
-    if (!exists $dbus_exports{$class}) {
-	# If this class has not been exported, lets look
-	# at the parent class & return its introspection
-        # data instead.
-	no strict 'refs';
-	if (defined (*{"${class}::ISA"})) {
-	    my @isa = @{"${class}::ISA"};
-	    foreach my $parent (@isa) {
-		# We don't recurse to Net::DBus::Object
-		# since we need to give sub-classes the
-		# choice of not supporting introspection
-		next if $parent eq "Net::DBus::Object";
-
-		my $ins = &dbus_introspector($object, $parent);
-		if ($ins) {
-		    return $ins;
-		}
-	    }
-	}
-	return undef;
-    }
-
-    unless (exists $dbus_introspectors{$class}) {
-	my $is = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
-	
-	&_dbus_introspector_add(ref($object), $is);
-	$dbus_introspectors{$class} = $is;
-    }
-    
-    return $dbus_introspectors{$class};
-}
-
-sub _dbus_introspector_add {
-    my $class = shift;
-    my $introspector = shift;
-
-    my $exports = $dbus_exports{$class};
-    if ($exports) {
-	foreach my $method (keys %{$exports->{methods}}) {
-	    my ($params, $returns, $interface, $attributes) = @{$exports->{methods}->{$method}};
-	    $introspector->add_method($method, $params, $returns, $interface, $attributes);
-	}
-	foreach my $prop (keys %{$exports->{props}}) {
-	    my ($type, $access, $interface, $attributes) = @{$exports->{props}->{$prop}};
-	    $introspector->add_property($prop, $type, $access, $interface, $attributes);
-	}
-	foreach my $signal (keys %{$exports->{signals}}) {
-	    my ($params, $interface, $attributes) = @{$exports->{signals}->{$signal}};
-	    $introspector->add_signal($signal, $params, $interface, $attributes);
-	}
-    }
-    
-    if (defined (*{"${class}::ISA"})) {
-	no strict "refs";
-	my @isa = @{"${class}::ISA"};
-	foreach my $parent (@isa) {
-	    &_dbus_introspector_add($parent, $introspector);
-	}
-    }
-}
-
-sub dbus_method {
-    my $name = shift;
-    my $params = [];
-    my $returns = [];
-    my $caller = caller;
-    my $interface = $dbus_exports{$caller}->{interface};
-    my %attributes;
-    
-    if (@_ && ref($_[0]) eq "ARRAY") {
-	$params = shift;
-    }
-    if (@_ && ref($_[0]) eq "ARRAY") {
-	$returns = shift;
-    }
-    if (@_ && !ref($_[0])) {
-	$interface = shift;
-    }
-    if (@_ && ref($_[0]) eq "HASH") {
-	%attributes = %{$_[0]};
-    }
-
-    if (!$interface) {
-	die "interface not specified & no default interface defined";
-    }
-    
-    $dbus_exports{$caller}->{methods}->{$name} = [$params, $returns, $interface, \%attributes];
-}
-
-
-sub dbus_property {
-    my $name = shift;
-    my $type = "string";
-    my $access = "readwrite";
-    my $caller = caller;
-    my $interface = $dbus_exports{$caller}->{interface};
-    my %attributes;
-    
-    if (@_ && !ref($_[0])) {
-	$type = shift;
-    }
-    if (@_ && !ref($_[0])) {
-	$access = shift;
-    }
-    if (@_ && !ref($_[0])) {
-	$interface = shift;
-    }
-    if ($_ && ref($_[0]) eq "HASH") {
-	%attributes = %{$_[0]};
-    }
-
-    if (!$interface) {
-	die "interface not specified & no default interface defined";
-    }
-    
-    $dbus_exports{$caller}->{props}->{$name} = [$type, $access, $interface, \%attributes];
-}
-
-
-sub dbus_signal {
-    my $name = shift;
-    my $params = [];
-    my $caller = caller;
-    my $interface = $dbus_exports{$caller}->{interface};
-    my %attributes;
-    
-    if (@_ && ref($_[0]) eq "ARRAY") {
-	$params = shift;
-    }
-    if (@_ && !ref($_[0])) {
-	$interface = shift;
-    }
-    if (@_ && ref($_[0]) eq "HASH") {
-	%attributes = %{$_[0]};
-    }
-
-    if (!$interface) {
-	die "interface not specified & no default interface defined";
-    }
-
-    $dbus_exports{$caller}->{signals}->{$name} = [$params, $interface, \%attributes];
-}
-
-1;
