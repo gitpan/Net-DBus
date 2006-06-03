@@ -3,11 +3,14 @@ const char *    T_PV
 DBusConnection*	O_OBJECT_connection
 DBusServer*	O_OBJECT_server
 DBusMessage*	O_OBJECT_message
+DBusPendingCall* O_OBJECT_pendingcall
 DBusWatch*      O_OBJECT_watch
 DBusTimeout*      O_OBJECT_timeout
 DBusMessageIter* O_OBJECT_messageiter
 DBusBusType T_IV
 dbus_bool_t T_BOOL
+dbus_int16_t T_IV
+dbus_uint16_t T_UV
 dbus_int32_t T_IV
 dbus_uint32_t T_UV
 dbus_int64_t T_IV
@@ -52,6 +55,19 @@ OUTPUT
 O_OBJECT_message
         sv_setref_pv( $arg, "Net::DBus::Binding::C::Message", (void*)$var );
 
+
+INPUT
+O_OBJECT_pendingcall
+    if (sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG))
+        $var = ($type)SvIV((SV*)SvRV( $arg ));
+    else {
+        warn( \"${Package}::$func_name() -- $var is not a blessed SV reference\" );
+        XSRETURN_UNDEF;
+    }
+
+OUTPUT
+O_OBJECT_pendingcall
+        sv_setref_pv( $arg, "Net::DBus::Binding::C::PendingCall", (void*)$var );
 
 INPUT
 O_OBJECT_watch

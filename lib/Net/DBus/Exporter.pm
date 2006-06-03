@@ -77,6 +77,14 @@ they are represented as the Perl SCALAR data type (see L<perldata>).
 
 A UTF-8 string of characters
 
+=item "int16"
+
+A 16-bit signed integer
+
+=item "uint16"
+
+A 16-bit unsigned integer
+
 =item "int32"
 
 A 32-bit signed integer
@@ -225,6 +233,8 @@ is used.
 package Net::DBus::Exporter;
 
 use vars qw(@ISA @EXPORT %dbus_exports %dbus_introspectors);
+
+use Net::DBus::Binding::Introspector;
 
 use warnings;
 use strict;

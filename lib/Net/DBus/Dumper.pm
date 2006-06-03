@@ -164,19 +164,34 @@ sub _dbus_dump_service {
     
     my @data;
     push @data, "Service: ", $service->get_service_name, "\n";
-
-    my $exp = $service->get_object("/org/cpan/Net/DBus/Exporter");
-    my $exports = eval {
-	$exp->ListObjects();
-    };
-    if ($@) {
-	push @data, "  Could not lookup list of exported object\n";
-    } else {
-	foreach (@{$exports}) {
-	    push @data, "  Object: $_\n";
-	}
+    
+    my @objects = &_dbus_dump_children($service, "/");
+    foreach (@objects) {
+	push @data, "  Object: $_\n";
     }
     return @data;
+}
+
+sub _dbus_dump_children {
+    my $service = shift;
+    my $path = shift;
+
+    my $exp = $service->get_object($path);
+    my @exports = eval {
+	my $ins = $exp->_introspector;
+        if ($ins) {
+	    return $ins->list_children;
+        }
+	return ();
+    };
+    my @objects = map { $path eq "/" ? $path . $_ : $path . "/" . $_ } @exports;
+    if ($@) {
+	#push @objects, " Could not lookup objects under path '$path'\n";
+    }
+    foreach my $child (@exports) {
+	push @objects, _dbus_dump_children ($service, $path eq "/" ? $path . $child : $path . "/" . $child);
+    }
+    return @objects;
 }
 
 sub _dbus_dump_bus {

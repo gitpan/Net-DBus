@@ -78,6 +78,7 @@ use Carp;
 
 use Net::DBus;
 use Net::DBus::Binding::Message::MethodReturn;
+use Net::DBus::Binding::PendingCall;
 
 =item my $con = Net::DBus::Binding::Connection->new(address => "unix:path=/path/to/socket");
 
@@ -195,7 +196,7 @@ sub send_with_reply_and_block {
     my $self = shift;
     my $msg = shift;
     my $timeout = shift;
-    
+
     my $reply = $self->{connection}->_send_with_reply_and_block($msg->{message}, $timeout);
 
     my $type = $reply->dbus_message_get_type;
@@ -208,6 +209,28 @@ sub send_with_reply_and_block {
     } else {
 	confess "unknown method reply type $type";
     }
+}
+
+
+=item my $pending_call = $con->send_with_reply($msg, $timeout);
+
+Queues a message up for sending to the remote host
+and returns immediately providing a reference to a
+C<Net::DBus::Binding::PendingCall> object. This object
+can be used to wait / watch for a reply. This allows
+methods to be processed asynchronously.
+
+=cut
+
+sub send_with_reply {
+    my $self = shift;
+    my $msg = shift;
+    my $timeout = shift;
+
+    my $reply = $self->{connection}->_send_with_reply($msg->{message}, $timeout);
+
+    return Net::DBus::Binding::PendingCall->new(method_call => $msg,
+						pending_call => $reply);
 }
 
 

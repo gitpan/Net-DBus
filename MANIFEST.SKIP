@@ -11,5 +11,6 @@ CVS
 .*~
 .#.*
 #.*
+.hg
 ^Makefile$
 ^cover_db/

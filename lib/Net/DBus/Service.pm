@@ -79,9 +79,6 @@ sub new {
 
     $self->get_bus->get_connection->request_name($self->get_service_name);
 
-    my $exp = Net::DBus::Service::Exporter->new($self);
-    $self->{exporter} = $exp;
-
     return $self;
 }
 
@@ -128,10 +125,6 @@ sub _register_object {
 				     $object->_dispatch(@_);
 				 });
 #    }
-    
-    if ($self->{exporter}) {
-	$self->{exporter}->register($object->get_object_path);
-    }
 }
 
 
@@ -141,60 +134,6 @@ sub _unregister_object {
 
     $self->get_bus->get_connection->
 	unregister_object_path($object->get_object_path);
-    
-    if ($self->{exporter}) {
-	$self->{exporter}->unregister($object->get_object_path);
-    }
-}
-
-1;
-
-package Net::DBus::Service::Exporter;
-
-use base qw(Net::DBus::Object);
-use strict;
-use Net::DBus::Exporter qw(org.cpan.Net.DBus.Exporter);
-
-dbus_method("ListObjects", [], [["array", "string"]]);
-dbus_signal("ObjectRegistered", ["string"]);
-dbus_signal("ObjectUnregistered", ["string"]);
-
-sub new {
-    my $class = shift;
-    my $service = shift;
-    my $self = $class->SUPER::new($service, "/org/cpan/Net/DBus/Exporter");
-    
-    $self->{objects} = {"/org/cpan/Net/DBus/Exporter" => 1};
-    
-    bless $self, $class;
-
-    return $self;
-}
-
-sub register {
-    my $self = shift;
-    my $path = shift;
-    
-    $self->{objects}->{$path} = 1;
-    
-    $self->emit_signal("ObjectRegistered", $path);
-}
-
-sub unregister {
-    my $self = shift;
-    my $path = shift;
-    
-    delete $self->{objects}->{$path};
-    
-    $self->emit_signal("ObjectUnregistered", $path);
-}
-
-
-sub ListObjects {
-    my $self = shift;
-    
-    my @objs = sort { $a cmp $b } keys %{$self->{objects}};
-    return \@objs;
 }
 
 1;

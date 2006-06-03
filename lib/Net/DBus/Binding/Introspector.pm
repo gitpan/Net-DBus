@@ -59,7 +59,6 @@ use Carp;
 use XML::Grove::Builder;
 use XML::Parser::PerlSAX;
 
-use Net::DBus;
 use Net::DBus::Binding::Message;
 
 our %simple_type_map = (
@@ -67,12 +66,14 @@ our %simple_type_map = (
   "bool" => &Net::DBus::Binding::Message::TYPE_BOOLEAN,
   "double" => &Net::DBus::Binding::Message::TYPE_DOUBLE,
   "string" => &Net::DBus::Binding::Message::TYPE_STRING,
+  "int16" => &Net::DBus::Binding::Message::TYPE_INT16,
+  "uint16" => &Net::DBus::Binding::Message::TYPE_UINT16,
   "int32" => &Net::DBus::Binding::Message::TYPE_INT32,
   "uint32" => &Net::DBus::Binding::Message::TYPE_UINT32,
   "int64" => &Net::DBus::Binding::Message::TYPE_INT64,
   "uint64" => &Net::DBus::Binding::Message::TYPE_UINT64,
-  "object" => &Net::DBus::Binding::Message::TYPE_OBJECT_PATH,
-  "variant" => &Net::DBus::Binding::Message::TYPE_VARIANT,
+  "objectpath" => &Net::DBus::Binding::Message::TYPE_OBJECT_PATH, 
+  "signature" => &Net::DBus::Binding::Message::TYPE_SIGNATURE,
 );
 
 our %simple_type_rev_map = (
@@ -80,12 +81,14 @@ our %simple_type_rev_map = (
   &Net::DBus::Binding::Message::TYPE_BOOLEAN => "bool",
   &Net::DBus::Binding::Message::TYPE_DOUBLE => "double",
   &Net::DBus::Binding::Message::TYPE_STRING => "string",
+  &Net::DBus::Binding::Message::TYPE_INT16 => "int16",
+  &Net::DBus::Binding::Message::TYPE_UINT16 => "uint16",
   &Net::DBus::Binding::Message::TYPE_INT32 => "int32",
   &Net::DBus::Binding::Message::TYPE_UINT32 => "uint32",
   &Net::DBus::Binding::Message::TYPE_INT64 => "int64",
   &Net::DBus::Binding::Message::TYPE_UINT64 => "uint64",
-  &Net::DBus::Binding::Message::TYPE_OBJECT_PATH => "object",
-  &Net::DBus::Binding::Message::TYPE_VARIANT => "variant",
+  &Net::DBus::Binding::Message::TYPE_OBJECT_PATH => "objectpath", 
+  &Net::DBus::Binding::Message::TYPE_SIGNATURE => "signature",
 );
 
 our %magic_type_map = (
@@ -105,6 +108,7 @@ our %compound_type_map = (
   "array" => &Net::DBus::Binding::Message::TYPE_ARRAY,
   "struct" => &Net::DBus::Binding::Message::TYPE_STRUCT,
   "dict" => &Net::DBus::Binding::Message::TYPE_DICT_ENTRY,
+  "variant" => &Net::DBus::Binding::Message::TYPE_VARIANT,
 );
 
 =item my $ins = Net::DBus::Binding::Introspector->new(object_path => $object_path,
@@ -465,6 +469,19 @@ sub list_properties {
     return keys %{$self->{interfaces}->{$interface}->{props}};
 }
 
+
+=item my @paths = $self->list_children;
+
+Returns a list of object paths representing all the children
+of this node.
+
+=cut
+
+sub list_children {
+    my $self = shift;
+    return @{$self->{children}};
+}
+
 =item my $path = $ins->get_object_path
 
 Returns the path of the object associated with this introspection
@@ -711,6 +728,11 @@ sub _parse_type {
 		if ($current->[0] eq "array") {
 		    $current = pop @cont;
 		}
+            } elsif ($type eq "v") {
+                push @{$current}, "variant";
+                if ($current->[0] eq "array") {
+                    $current = pop @cont;
+                }
 	    } else {
 		die "unknown type sig '$type'";
 	    }
@@ -911,6 +933,11 @@ sub to_xml_type {
 	    $sig .= $self->to_xml_type($type->[1]);
 	    $sig .= $self->to_xml_type($type->[2]);
 	    $sig .= "}";
+	} elsif ($type->[0] eq "variant") {
+	    if ($#{$type} != 0) {
+		die "dict spec must contain no sub-types";
+	    }
+	    $sig .= chr($compound_type_map{"variant"});
 	} else {
 	    die "unknown/unsupported compound type " . $type->[0] . " expecting 'array', 'struct', or 'dict'";
 	}
@@ -974,7 +1001,7 @@ sub encode {
 
     die "expected " . int(@types) . " $direction, but got " . int(@args) 
 	unless $#types == $#args;
-    
+
     my $iter = $message->iterator(1);
     foreach my $t ($self->_convert(@types)) {
 	$iter->append(shift @args, $t);
@@ -994,6 +1021,7 @@ sub _convert {
 	    my @subout = $self->_convert(@subtype);
 	    die "unknown compound type " . $in->[0] unless
 		exists $compound_type_map{lc $in->[0]};
+
 	    push @out, [$compound_type_map{lc $in->[0]}, \@subout];
 	} elsif (exists $magic_type_map{lc $in}) {
 	    push @out, $magic_type_map{lc $in};

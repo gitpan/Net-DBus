@@ -12,6 +12,8 @@ examples/example-signal-emitter.pl
 examples/example-signal-receiver.pl
 examples/lshal.pl
 lib/Net/DBus.pm
+lib/Net/DBus/Annotation.pm
+lib/Net/DBus/ASyncReply.pm
 lib/Net/DBus/Binding/Bus.pm
 lib/Net/DBus/Binding/Connection.pm
 lib/Net/DBus/Binding/Introspector.pm
@@ -21,6 +23,7 @@ lib/Net/DBus/Binding/Message/Error.pm
 lib/Net/DBus/Binding/Message/MethodCall.pm
 lib/Net/DBus/Binding/Message/MethodReturn.pm
 lib/Net/DBus/Binding/Message/Signal.pm
+lib/Net/DBus/Binding/PendingCall.pm
 lib/Net/DBus/Binding/Server.pm
 lib/Net/DBus/Binding/Value.pm
 lib/Net/DBus/Binding/Watch.pm
@@ -40,6 +43,7 @@ lib/Net/DBus/Tutorial/UsingObjects.pod
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
+META.yml
 Net-DBus.spec.PL
 README
 t/00-constants.t
@@ -58,4 +62,3 @@ t/60-object-props.t
 t/65-object-magic.t
 typemap
 Net-DBus.spec
-META.yml                                 Module meta-data (added by MakeMaker)

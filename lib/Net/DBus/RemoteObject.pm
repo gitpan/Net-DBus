@@ -39,7 +39,7 @@ Net::DBus::RemoteObject - Access objects provided on the bus
 
 This module provides the API for accessing remote objects available
 on the bus. It uses the autoloader to fake the presence of methods
-based on the API of the remote object. There is also support for 
+based on the API of the remote object. There is also support for
 setting callbacks against signals, and accessing properties of the
 object.
 
@@ -60,6 +60,9 @@ our $AUTOLOAD;
 
 use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Introspector;
+use Net::DBus::ASyncReply;
+use Net::DBus::Annotation qw(:call);
+
 
 =item my $object = Net::DBus::RemoteObject->new($service, $object_path[, $interface]);
 
@@ -67,7 +70,7 @@ Creates a new handle to a remote object. The C<$service> parameter is an instanc
 of the L<Net::DBus::RemoteService> method, and C<$object_path> is the identifier of
 an object exported by this service, for example C</org/freedesktop/DBus>. For remote
 objects which implement more than one interface it is possible to specify an optional
-name of an interface as the third parameter. This is only really required, however, if 
+name of an interface as the third parameter. This is only really required, however, if
 two interfaces in the object provide methods with the same name, since introspection
 data can be used to automatically resolve the correct interface to call cases where
 method names are unique. Rather than using this constructor directly, it is preferrable
@@ -86,7 +89,7 @@ sub new {
     $self->{object_path}  = shift;
     $self->{interface} = @_ ? shift : undef;
     $self->{introspected} = 0;
-    
+
     bless $self, $class;
 
     return $self;
@@ -105,7 +108,7 @@ support introspection.
 sub as_interface {
     my $self = shift;
     my $interface = shift;
-    
+
     die "already cast to " . $self->{interface} . "'"
 	if $self->{interface};
 
@@ -128,7 +131,7 @@ sub get_service {
 
 =item my $path = $object->get_object_path
 
-Retrieves the unique path identifier for this object within the 
+Retrieves the unique path identifier for this object within the
 service.
 
 =cut
@@ -153,7 +156,7 @@ sub get_child_object {
     my $path = shift;
     my $interface = @_ ? shift : undef;
     my $fullpath = $self->{object_path} . $path;
-    
+
     return $self->new($self->get_service,
 		      $fullpath,
 		      $interface);
@@ -161,20 +164,20 @@ sub get_child_object {
 
 sub _introspector {
     my $self = shift;
-    
+
     unless ($self->{introspected}) {
 	my $call = Net::DBus::Binding::Message::MethodCall->
 	    new(service_name => $self->{service}->get_service_name(),
 		object_path => $self->{object_path},
 		method_name => "Introspect",
 		interface => "org.freedesktop.DBus.Introspectable");
-	
+
 	my $xml = eval {
 	    my $reply = $self->{service}->
 		get_bus()->
 		get_connection()->
 		send_with_reply_and_block($call, 60 * 1000);
-	    
+
 	    my $iter = $reply->iterator;
 	    return $iter->get(&Net::DBus::Binding::Message::TYPE_STRING);
 	};
@@ -184,7 +187,7 @@ sub _introspector {
 		die $@;
 	    } else {
 		# Ignore other failures, since its probably
-		# just that the object doesn't implement 
+		# just that the object doesn't implement
 		# the introspect method. Of course without
 		# the introspect method we can't tell for sure
 		# if this is the case..
@@ -220,11 +223,11 @@ sub connect_to_signal {
     my $interface = $self->{interface};
     if (!$interface) {
 	if (!$ins) {
-	    die "no introspection data available for '" . $self->get_object_path . 
+	    die "no introspection data available for '" . $self->get_object_path .
 		"', and object is not cast to any interface";
 	}
 	my @interfaces = $ins->has_signal($name);
-	
+
 	if ($#interfaces == -1) {
 	    die "no signal with name '$name' is exported in object '" .
 		$self->get_object_path . "'\n";
@@ -271,10 +274,15 @@ sub AUTOLOAD {
     my $self = shift;
     my $sub = $AUTOLOAD;
 
+    my $mode = dbus_call_sync;
+    if (@_ && UNIVERSAL::isa($_[0], "Net::DBus::Annotation")) {
+	$mode = shift;
+    }
+
     (my $name = $AUTOLOAD) =~ s/.*:://;
 
     my $interface = $self->{interface};
-    
+
     # If introspection data is available, use that
     # to resolve correct interface (if object is not
     # cast to an explicit interface already)
@@ -282,7 +290,7 @@ sub AUTOLOAD {
     if ($ins) {
 	if ($interface) {
 	    if ($ins->has_method($name, $interface)) {
-		return $self->_call_method($name, $interface, 1, @_);	    
+		return $self->_call_method($mode, $name, $interface, 1, @_);
 	    }
 	    if ($ins->has_property($name, $interface)) {
 		if ($ins->is_property_deprecated($name, $interface)) {
@@ -290,24 +298,24 @@ sub AUTOLOAD {
 		}
 
 		if (@_) {
-		    $self->_call_method("Set", "org.freedesktop.DBus.Properties", $interface, 1, $name, $_[0]);
+		    $self->_call_method($mode, "Set", "org.freedesktop.DBus.Properties", $interface, 1, $name, $_[0]);
 		    return ();
 		} else {
-		    return $self->_call_method("Get", "org.freedesktop.DBus.Properties", $interface, 1, $name);
+		    return $self->_call_method($mode, "Get", "org.freedesktop.DBus.Properties", $interface, 1, $name);
 		}
 	    }
 	} else {
 	    my @interfaces = $ins->has_method($name);
-	    
+
 	    if (@interfaces) {
 		if ($#interfaces > 0) {
 		    die "method with name '$name' is exported " .
 			"in multiple interfaces of '" . $self->get_object_path . "'";
 		}
-		return $self->_call_method($name, $interfaces[0], 1, @_);
+		return $self->_call_method($mode, $name, $interfaces[0], 1, @_);
 	    }
 	    @interfaces = $ins->has_property($name);
-	    
+
 	    if (@interfaces) {
 		if ($#interfaces > 0) {
 		    die "property with name '$name' is exported " .
@@ -318,26 +326,27 @@ sub AUTOLOAD {
 		    warn "property $name in interface $interface on " . $self->get_object_path . " is deprecated";
 		}
 		if (@_) {
-		    $self->_call_method("Set", "org.freedesktop.DBus.Properties", $interface, 1, $name, $_[0]);
+		    $self->_call_method($mode, "Set", "org.freedesktop.DBus.Properties", $interface, 1, $name, $_[0]);
 		    return ();
 		} else {
-		    return $self->_call_method("Get", "org.freedesktop.DBus.Properties", $interface, 1, $name);
+		    return $self->_call_method($mode, "Get", "org.freedesktop.DBus.Properties", $interface, 1, $name);
 		}
 	    }
 	}
     }
 
     if (!$interface) {
-	die "no introspection data available for method '" . $name . "' in object '" . 
+	die "no introspection data available for method '" . $name . "' in object '" .
 	    $self->get_object_path . "', and object is not cast to any interface";
     }
-    
-    return $self->_call_method($name, $interface, 0, @_);
+
+    return $self->_call_method($mode, $name, $interface, 0, @_);
 }
 
 
 sub _call_method {
     my $self = shift;
+    my $mode = shift;
     my $name = shift;
     my $interface = shift;
     my $introspect = shift;
@@ -361,24 +370,39 @@ sub _call_method {
     } else {
 	$call->append_args_list(@_);
     }
-    
-    if (!$ins ||
-	$ins->does_method_reply($name, $interface)) {
+
+    if ($mode == dbus_call_sync) {
 	my $reply = $self->{service}->
 	    get_bus()->
 	    get_connection()->
 	    send_with_reply_and_block($call, 60 * 1000);
-	
+
 	my @reply;
 	if ($ins) {
 	    @reply = $ins->decode($reply, "methods", $name, "returns");
 	} else {
 	    @reply = $reply->get_args_list;
 	}
-	
+
 	return wantarray ? @reply : $reply[0];
+    } elsif ($mode == dbus_call_async) {
+	my $pending_call = $self->{service}->
+	    get_bus()->
+	    get_connection()->
+	    send_with_reply($call, 60 * 1000);
+	my $reply = Net::DBus::ASyncReply->_new(pending_call => $pending_call,
+						($ins ? (introspector => $ins,
+							 method_name => $name)
+						 : ()));
+	return $reply;
+    } elsif ($mode == dbus_call_noreply) {
+	$call->set_no_reply(1);
+	$self->{service}->
+	    get_bus()->
+	    get_connection()->
+	    send($call, 60 * 1000);
     } else {
-	return wantarray ? () : undef;
+	die "unsupported annotation '$mode'";
     }
 }
 
@@ -395,7 +419,7 @@ Daniel Berrange <dan@berrange.com>
 
 =head1 COPYRIGHT
 
-Copright (C) 2004-2005, Daniel Berrange. 
+Copright (C) 2004-2005, Daniel Berrange.
 
 =head1 SEE ALSO
 

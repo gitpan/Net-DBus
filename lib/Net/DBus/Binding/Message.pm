@@ -78,6 +78,11 @@ dictionary entry data type.
 Constant representing the signature value associated with the
 IEEE double precision floating point data type.
 
+=item TYPE_INT16
+
+Constant representing the signature value associated with the
+signed 16 bit integer data type.
+
 =item TYPE_INT32
 
 Constant representing the signature value associated with the
@@ -98,10 +103,20 @@ object path data type.
 Constant representing the signature value associated with the
 UTF-8 string data type.
 
+=item TYPE_SIGNATURE
+
+Constant representing the signature value associated with the
+signature data type.
+
 =item TYPE_STRUCT
 
 Constant representing the signature value associated with the
 struct data type.
+
+=item TYPE_UINT16
+
+Constant representing the signature value associated with the
+unsigned 16 bit integer data type.
 
 =item TYPE_UINT32
 
@@ -133,7 +148,6 @@ use strict;
 use warnings;
 use Carp;
 
-use Net::DBus;
 use Net::DBus::Binding::Iterator;
 use Net::DBus::Binding::Message::Signal;
 use Net::DBus::Binding::Message::MethodCall;
@@ -334,6 +348,36 @@ sub iterator {
     }
 }
 
+=item $boolean = $msg->get_no_reply()
+
+Gets the flag indicating whether the message is expecting
+a reply to be sent. 
+
+=cut
+
+sub get_no_reply {
+    my $self = shift;
+    
+    return $self->{message}->dbus_message_get_no_reply;
+}
+
+=item $msg->set_no_reply($boolean)
+
+Toggles the flag indicating whether the message is expecting
+a reply to be sent. All method call messages expect a reply
+by default. By toggling this flag the communication latency
+is reduced by removing the need for the client to wait
+
+=cut
+
+
+sub set_no_reply {
+    my $self = shift;
+    my $flag = shift;
+    
+    $self->{message}->dbus_message_set_no_reply($flag);
+}
+
 =item my @values = $msg->get_args_list
 
 De-marshall all the values in the body of the message, using the 
@@ -374,18 +418,6 @@ sub append_args_list {
 	$iter->append($arg);
     }
 }
-
-
-# The following methods documented, are in the XS module
-
-=item $msg->set_no_reply($boolean)
-
-Toggles the flag indicating whether the message is expecting
-a reply to be sent. All method call messages expect a reply
-by default. By toggling this flag the communication latency
-is reduced by removing the need for the client to wait
-
-=cut
 
 # To keep autoloader quiet
 sub DESTROY {

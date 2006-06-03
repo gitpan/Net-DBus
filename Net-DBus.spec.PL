@@ -51,9 +51,13 @@ BuildRoot: /var/tmp/%{appname}-%{version}-root
 Requires: perl = %{perlversion}
 # For XML::Parser::PerlSAX & friends
 Requires: perl-libxml-perl
+Requires: perl-XML-Grove
 # For Time::HiRes
 Requires: perl-Time-HiRes
 Requires: dbus >= 0.33
+BuildRequires: dbus-devel >= 0.33
+BuildRequires: perl-XML-Grove
+BuildRequires: perl-libxml-perl
 
 %description
 Provides a Perl API to the DBus message system

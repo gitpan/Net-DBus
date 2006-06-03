@@ -385,6 +385,7 @@ BOOT:
         REGISTER_CONSTANT(DBUS_TYPE_BOOLEAN, TYPE_BOOLEAN);
         REGISTER_CONSTANT(DBUS_TYPE_BYTE, TYPE_BYTE);
         REGISTER_CONSTANT(DBUS_TYPE_DOUBLE, TYPE_DOUBLE);
+        REGISTER_CONSTANT(DBUS_TYPE_INT16, TYPE_INT16);
         REGISTER_CONSTANT(DBUS_TYPE_INT32, TYPE_INT32);
         REGISTER_CONSTANT(DBUS_TYPE_INT64, TYPE_INT64);
         REGISTER_CONSTANT(DBUS_TYPE_INVALID, TYPE_INVALID);
@@ -393,6 +394,7 @@ BOOT:
         REGISTER_CONSTANT(DBUS_TYPE_OBJECT_PATH, TYPE_OBJECT_PATH);
         REGISTER_CONSTANT(DBUS_TYPE_DICT_ENTRY, TYPE_DICT_ENTRY);
         REGISTER_CONSTANT(DBUS_TYPE_STRING, TYPE_STRING);
+        REGISTER_CONSTANT(DBUS_TYPE_UINT16, TYPE_UINT16);
         REGISTER_CONSTANT(DBUS_TYPE_UINT32, TYPE_UINT32);
         REGISTER_CONSTANT(DBUS_TYPE_UINT64, TYPE_UINT64);
         REGISTER_CONSTANT(DBUS_TYPE_VARIANT, TYPE_VARIANT);
@@ -494,6 +496,25 @@ _send_with_reply_and_block(con, msg, timeout)
         PD_DEBUG("  Member %s\n", dbus_message_get_member(reply) ? dbus_message_get_member(reply) : "");
         // XXX needed ?
         //dbus_message_ref(reply);
+        RETVAL = reply;
+    OUTPUT:
+        RETVAL
+
+
+DBusPendingCall *
+_send_with_reply(con, msg, timeout)
+        DBusConnection *con;
+        DBusMessage *msg;
+        int timeout;
+    PREINIT:
+        DBusPendingCall *reply;
+    CODE:
+        if (!dbus_connection_send_with_reply(con, msg, &reply, timeout)) {
+          croak("not enough memory to send message");
+        }
+        PD_DEBUG("Create pending call %p\n", reply);
+        // XXX needed ?
+        //dbus_pending_call_ref(reply);
         RETVAL = reply;
     OUTPUT:
         RETVAL
@@ -785,14 +806,6 @@ _create(type)
     OUTPUT:
         RETVAL
 
-void
-set_no_reply(msg, status)
-        DBusMessage *msg;
-        dbus_bool_t status;
-    CODE:
-        dbus_message_set_no_reply(msg, status);
-
-
 
 DBusMessageIter *
 _iterator_append(msg)
@@ -826,6 +839,15 @@ DESTROY(msg)
         PD_DEBUG("  Path %s\n", dbus_message_get_path(msg) ? dbus_message_get_path(msg) : "");
         PD_DEBUG("  Member %s\n", dbus_message_get_member(msg) ? dbus_message_get_member(msg) : "");
         dbus_message_unref(msg);
+
+dbus_bool_t
+dbus_message_get_no_reply(msg)
+	DBusMessage *msg;
+
+void
+dbus_message_set_no_reply(msg,flag)
+	DBusMessage *msg;
+        dbus_bool_t flag;
 
 int
 dbus_message_get_type(msg)
@@ -975,6 +997,32 @@ _create(replyto, name, message)
     OUTPUT:
         RETVAL
 
+MODULE = Net::DBus::Binding::C::PendingCall		PACKAGE = Net::DBus::Binding::C::PendingCall
+
+PROTOTYPES: ENABLE
+
+DBusMessage *
+dbus_pending_call_steal_reply(call)
+        DBusPendingCall *call;
+
+void
+dbus_pending_call_block(call)
+        DBusPendingCall *call;
+
+dbus_bool_t
+dbus_pending_call_get_completed(call)
+        DBusPendingCall *call;
+
+void
+dbus_pending_call_cancel(call)
+        DBusPendingCall *call;
+
+void
+DESTROY (call)
+        DBusPendingCall *call;
+    CODE:
+        PD_DEBUG("Unrefing pending call %p", call);
+        dbus_pending_call_unref(call);
 
 MODULE = Net::DBus::Binding::C::Watch			PACKAGE = Net::DBus::Binding::C::Watch
 
@@ -1144,6 +1192,22 @@ get_byte(iter)
     OUTPUT:
         RETVAL
 
+dbus_int16_t
+get_int16(iter)
+        DBusMessageIter *iter;
+    CODE:
+        dbus_message_iter_get_basic(iter, &RETVAL);
+    OUTPUT:
+        RETVAL
+
+dbus_uint16_t
+get_uint16(iter)
+        DBusMessageIter *iter;
+    CODE:
+        dbus_message_iter_get_basic(iter, &RETVAL);
+    OUTPUT:
+        RETVAL
+
 dbus_int32_t
 get_int32(iter)
         DBusMessageIter *iter;
@@ -1192,6 +1256,22 @@ get_string(iter)
     OUTPUT:
         RETVAL
 
+char *
+get_signature(iter)
+        DBusMessageIter *iter;
+    CODE:
+        dbus_message_iter_get_basic(iter, &RETVAL);
+    OUTPUT:
+        RETVAL
+
+char *
+get_object_path(iter)
+        DBusMessageIter *iter;
+    CODE:
+        dbus_message_iter_get_basic(iter, &RETVAL);
+    OUTPUT:
+        RETVAL
+
 
 void
 append_boolean(iter, val)
@@ -1209,6 +1289,24 @@ append_byte(iter, val)
     CODE:
 	if (!dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &val)) {
           croak("cannot append byte");
+        }
+
+void
+append_int16(iter, val)
+        DBusMessageIter *iter;
+        dbus_int16_t val;
+    CODE:
+	if (!dbus_message_iter_append_basic(iter, DBUS_TYPE_INT16, &val)) {
+          croak("cannot append int16");
+        }
+
+void
+append_uint16(iter, val)
+        DBusMessageIter *iter;
+        dbus_uint16_t val;
+    CODE:
+        if (!dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &val)) {
+          croak("cannot append uint16");
         }
 
 void
@@ -1263,6 +1361,24 @@ append_string(iter, val)
     CODE:
         if (!dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &val)) {
           croak("cannot append string");
+        }
+
+void
+append_object_path(iter, val)
+        DBusMessageIter *iter;
+        char *val;
+    CODE:
+        if (!dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &val)) {
+          croak("cannot append object path");
+        }
+
+void
+append_signature(iter, val)
+        DBusMessageIter *iter;
+        char *val;
+    CODE:
+        if (!dbus_message_iter_append_basic(iter, DBUS_TYPE_SIGNATURE, &val)) {
+          croak("cannot append signature");
         }
 
 

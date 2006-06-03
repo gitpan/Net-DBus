@@ -1,4 +1,25 @@
 
+Changes since 0.33.1
+
+ - Fixed handling of variants in introspection data
+
+ - Added binding for the DBusPendingCall C object
+
+ - Added some missing RPM dependancies on XML libs, and on minimum
+   required dbus version
+
+ - Added support for doing asynchronous method calls, and fire-and-
+   forgot calls for methods whose return status is not desired. Use
+   the constants in Net::DBus::Annotation module to indicate desired
+   call mode. Default is to do synchronous blocking calls.
+
+ - Added support for the 16-bit integer, signature and object path
+   data types
+
+ - Made introspection of root objects compliant with upsteam spec,
+   by calling introspect on the root object, "/", rather than a 
+   Perl specific magic object path.
+
 Changes since 0.32.3
 
  - Constructor for Net::DBus::Object allows another Net::DBus::Object

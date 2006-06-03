@@ -97,11 +97,11 @@ This the base of all objects which are exported to the
 message bus. It provides the core support for type introspection
 required for objects exported to the message. When sub-classing
 this object, methods can be created & tested as per normal Perl
-modules. Then just as the L<Exporter> module is used to export 
-methods within a script, the L<Net::DBus::Exporter> module is 
+modules. Then just as the L<Exporter> module is used to export
+methods within a script, the L<Net::DBus::Exporter> module is
 used to export methods (and signals) to the message bus.
 
-All packages inheriting from this, will automatically have the 
+All packages inheriting from this, will automatically have the
 interface C<org.freedesktop.DBus.Introspectable> registered
 with L<Net::DBus::Exporter>, and the C<Introspect> method within
 this exported.
@@ -135,8 +135,8 @@ use Net::DBus::Binding::Message::MethodReturn;
 
 dbus_method("Introspect", [], ["string"]);
 
-dbus_method("Get", ["string", "string"], ["variant"], "org.freedesktop.DBus.Properties");
-dbus_method("Set", ["string", "string", "variant"], [], "org.freedesktop.DBus.Properties");
+dbus_method("Get", ["string", "string"], [["variant"]], "org.freedesktop.DBus.Properties");
+dbus_method("Set", ["string", "string", ["variant"]], [], "org.freedesktop.DBus.Properties");
 
 =item my $object = Net::DBus::Object->new($service, $path)
 
@@ -153,10 +153,10 @@ method on the L<Net::DBus> object.
 sub new {
     my $class = shift;
     my $self = {};
-    
+
     my $parent = shift;
     my $path = shift;
-   
+
     $self->{parent} = $parent;
     if ($parent->isa(__PACKAGE__)) {
 	$self->{service} = $parent->get_service;
@@ -190,14 +190,14 @@ This method disconnects the object from the bus, such that it
 will no longer receive messages sent by other clients. Any
 child objects will be recursively disconnected too. After an
 object has been disconnected, it is possible for Perl to
-garbage collect the object instance. It will also make it 
-possible to connect a newly created object to the same path. 
+garbage collect the object instance. It will also make it
+possible to connect a newly created object to the same path.
 
 =cut
 
 sub disconnect {
     my $self = shift;
-    
+
     return unless $self->{parent};
 
     foreach my $child (keys %{$self->{children}}) {
@@ -224,9 +224,9 @@ will only transition if the C<disconnect> method is called.
 
 sub is_connected {
     my $self = shift;
-    
+
     return 0 unless $self->{parent};
-    
+
     if ($self->{parent}->isa(__PACKAGE__)) {
 	return $self->{parent}->is_connected;
     }
@@ -235,7 +235,7 @@ sub is_connected {
 
 sub DESTROY {
     my $self = shift;
-    # XXX there are some issues during global 
+    # XXX there are some issues during global
     # destruction which need to be better figured
     # out before this will work
     #$self->disconnect;
@@ -244,7 +244,7 @@ sub DESTROY {
 sub _register_child {
     my $self = shift;
     my $object = shift;
-    
+
     $self->get_service->_register_object($object);
     $self->{children}->{$object->get_object_path} = $object;
 }
@@ -253,7 +253,7 @@ sub _register_child {
 sub _unregister_child {
     my $self = shift;
     my $object = shift;
-    
+
     $self->get_service->_unregister_object($object);
     delete $self->{children}->{$object->get_object_path};
 }
@@ -288,9 +288,9 @@ Emits a signal from the object, with a name of C<$name>. If the
 C<$interface> parameter is defined, the signal will be scoped
 within that interface. If the C<$client> parameter is defined,
 the signal will be unicast to that client on the bus. The
-signal and the data types of the arguments C<@args> must have 
-been registered with L<Net::DBus::Exporter> by calling the 
-C<dbus_signal> method. 
+signal and the data types of the arguments C<@args> must have
+been registered with L<Net::DBus::Exporter> by calling the
+C<dbus_signal> method.
 
 =cut
 
@@ -304,7 +304,7 @@ sub emit_signal_in {
     die "object is disconnected from the bus" unless $self->is_connected;
 
     my $signal = Net::DBus::Binding::Message::Signal->new(object_path => $self->get_object_path,
-							  interface => $interface, 
+							  interface => $interface,
 							  signal_name => $name);
     if ($destination) {
 	$signal->set_destination($destination);
@@ -317,7 +317,7 @@ sub emit_signal_in {
 	$signal->append_args_list(@args);
     }
     $self->get_service->get_bus->get_connection->send($signal);
-    
+
     # Short circuit locally registered callbacks
     if (exists $self->{callbacks}->{$interface} &&
 	exists $self->{callbacks}->{$interface}->{$name}) {
@@ -329,8 +329,8 @@ sub emit_signal_in {
 =item $self->emit_signal_to($name, $client, @args);
 
 Emits a signal from the object, with a name of C<$name>. The
-signal and the data types of the arguments C<@args> must have 
-been registered with L<Net::DBus::Exporter> by calling the 
+signal and the data types of the arguments C<@args> must have
+been registered with L<Net::DBus::Exporter> by calling the
 C<dbus_signal> method. The signal will be sent only to the
 client named by the C<$client> parameter.
 
@@ -344,7 +344,7 @@ sub emit_signal_to {
 
     my $intro = $self->_introspector;
     if (!$intro) {
-	die "no introspection data available for '" . $self->get_object_path . 
+	die "no introspection data available for '" . $self->get_object_path .
 	    "', use the emit_signal_in method instead";
     }
     my @interfaces = $intro->has_signal($name);
@@ -361,8 +361,8 @@ sub emit_signal_to {
 =item $self->emit_signal($name, @args);
 
 Emits a signal from the object, with a name of C<$name>. The
-signal and the data types of the arguments C<@args> must have 
-been registered with L<Net::DBus::Exporter> by calling the 
+signal and the data types of the arguments C<@args> must have
+been registered with L<Net::DBus::Exporter> by calling the
 C<dbus_signal> method. The signal will be broadcast to all
 clients on the bus.
 
@@ -374,7 +374,7 @@ sub emit_signal {
     my @args = @_;
 
     $self->emit_signal_to($name, undef, @args);
-}   
+}
 
 =item $object->connect_to_signal_in($name, $interface, $coderef);
 
@@ -395,7 +395,7 @@ sub connect_to_signal_in {
     my $code = shift;
 
     die "object is disconnected from the bus" unless $self->is_connected;
-    
+
     $self->{callbacks}->{$interface} = {} unless
 	exists $self->{callbacks}->{$interface};
     $self->{callbacks}->{$interface}->{$name} = $code;
@@ -418,11 +418,11 @@ sub connect_to_signal {
 
     my $ins = $self->_introspector;
     if (!$ins) {
-	die "no introspection data available for '" . $self->get_object_path . 
+	die "no introspection data available for '" . $self->get_object_path .
 	    "', use the connect_to_signal_in method instead";
     }
     my @interfaces = $ins->has_signal($name);
-    
+
     if ($#interfaces == -1) {
 	die "no signal with name '$name' is exported in object '" .
 	    $self->get_object_path . "'\n";
@@ -431,7 +431,7 @@ sub connect_to_signal {
 	    "in multiple interfaces of '" . $self->get_object_path . "'" .
 	    "use the connect_to_signal_in method instead";
     }
-    
+
     $self->connect_to_signal_in($name, $interfaces[0], $code);
 }
 
@@ -444,13 +444,13 @@ sub _dispatch {
     # Experiment in handling dispatch for child objects internally
 #     my $path = $message->get_path;
 #     while ($path ne $self->get_object_path) {
-# 	if (exists $self->{children}->{$path}) {
-# 	    $self->{children}->{$path}->_dispatch($connection, $message);
-# 	    return;
-# 	}
-# 	$path =~ s,/[^/]+$,,;
+#	if (exists $self->{children}->{$path}) {
+#	    $self->{children}->{$path}->_dispatch($connection, $message);
+#	    return;
+#	}
+#	$path =~ s,/[^/]+$,,;
 #     }
-    
+
     my $reply;
     my $method_name = $message->get_member;
     my $interface = $message->get_interface;
@@ -460,7 +460,7 @@ sub _dispatch {
 	    $ENABLE_INTROSPECT) {
 	    my $xml = $self->_introspector->format;
 	    $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $message);
-	    
+
 	    $self->_introspector->encode($reply, "methods", $method_name, "returns", $xml);
 	}
     } elsif ($interface eq "org.freedesktop.DBus.Properties") {
@@ -494,14 +494,18 @@ sub _dispatch {
 	    }
 	}
     }
-    
+
     if (!$reply) {
 	$reply = Net::DBus::Binding::Message::Error->new(replyto => $message,
 							 name => "org.freedesktop.DBus.Error.Failed",
 							 description => "No such method " . ref($self) . "->" . $method_name);
     }
-    
-    $self->get_service->get_bus->get_connection->send($reply);
+
+    if ($message->get_no_reply()) {
+	# Not sending reply
+    } else {
+	$self->get_service->get_bus->get_connection->send($reply);
+    }
 }
 
 
@@ -511,13 +515,13 @@ sub _dispatch_prop_read {
     my $method_name = shift;
 
     my $ins = $self->_introspector;
-    
+
     if (!$ins) {
 	return Net::DBus::Binding::Message::Error->new(replyto => $message,
 						       name => "org.freedesktop.DBus.Error.Failed",
 						       description => "no introspection data exported for properties");
     }
-    
+
     my ($pinterface, $pname) = $ins->decode($message, "methods", "Get", "params");
 
     if (!$ins->has_property($pname, $pinterface)) {
@@ -525,13 +529,13 @@ sub _dispatch_prop_read {
 						       name => "org.freedesktop.DBus.Error.Failed",
 						       description => "no property '$pname' exported in interface '$pinterface'");
     }
-    
+
     if (!$ins->is_property_readable($pinterface, $pname)) {
 	return Net::DBus::Binding::Message::Error->new(replyto => $message,
 						       name => "org.freedesktop.DBus.Error.Failed",
 						       description => "property '$pname' in interface '$pinterface' is not readable");
     }
-    
+
     if ($self->can($pname)) {
 	my $value = eval {
 	    $self->$pname;
@@ -542,7 +546,7 @@ sub _dispatch_prop_read {
 							   description => "error reading '$pname' in interface '$pinterface': $@");
 	} else {
 	    my $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $message);
-	    
+
 	    $self->_introspector->encode($reply, "methods", "Get", "returns", $value);
 	    return $reply;
 	}
@@ -559,27 +563,27 @@ sub _dispatch_prop_write {
     my $method_name = shift;
 
     my $ins = $self->_introspector;
-    
+
     if (!$ins) {
 	return Net::DBus::Binding::Message::Error->new(replyto => $message,
 						       name => "org.freedesktop.DBus.Error.Failed",
 						       description => "no introspection data exported for properties");
     }
-    
+
     my ($pinterface, $pname, $pvalue) = $ins->decode($message, "methods", "Set", "params");
-    
+
     if (!$ins->has_property($pname, $pinterface)) {
 	return Net::DBus::Binding::Message::Error->new(replyto => $message,
 						       name => "org.freedesktop.DBus.Error.Failed",
 						       description => "no property '$pname' exported in interface '$pinterface'");
     }
-    
+
     if (!$ins->is_property_writable($pinterface, $pname)) {
 	return Net::DBus::Binding::Message::Error->new(replyto => $message,
 						       name => "org.freedesktop.DBus.Error.Failed",
 						       description => "property '$pname' in interface '$pinterface' is not writable");
     }
-    
+
     if ($self->can($pname)) {
 	eval {
 	    $self->$pname($pvalue);
@@ -600,7 +604,7 @@ sub _dispatch_prop_write {
 
 sub _introspector {
     my $self = shift;
-    
+
     if (!$self->{introspected}) {
 	$self->{introspector} = Net::DBus::Exporter::_dbus_introspector($self);
 	$self->{introspected} = 1;

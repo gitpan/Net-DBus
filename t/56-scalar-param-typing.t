@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 256;
+use Test::More tests => 382;
 
 use strict;
 use warnings;
@@ -30,6 +30,103 @@ TEST_NO_INTROSPECT: {
     is($object->get_last_message_param, "5.234", "double as string");
     
 
+    #### INT 16 tests
+
+    # Positive integers
+    $myobject->ScalarInt16("2");
+    is($object->get_last_message_signature, "s", "string as int16");
+    is($object->get_last_message_param, "2", "string as int16");
+
+    $myobject->ScalarInt16(2);
+    is($object->get_last_message_signature, "s", "int as int16");
+    is($object->get_last_message_param, "2", "int as int16");
+
+    $myobject->ScalarInt16(2.0);
+    is($object->get_last_message_signature, "s", "double as int16");
+    is($object->get_last_message_param, "2", "double as int16");
+
+    # Negative integers
+    $myobject->ScalarInt16("-2");
+    is($object->get_last_message_signature, "s", "-ve string as int16");
+    is($object->get_last_message_param, "-2", "-ve string as int16");
+
+    $myobject->ScalarInt16(-2);
+    is($object->get_last_message_signature, "s", "-ve int as int16");
+    is($object->get_last_message_param, "-2", "-ve int as int16");
+
+    $myobject->ScalarInt16(-2.0);
+    is($object->get_last_message_signature, "s",  "-ve double as int16");
+    is($object->get_last_message_param, "-2", "-ve double as int16");
+
+    # Rounding of doubles
+    $myobject->ScalarInt16(2.1);
+    is($object->get_last_message_signature, "s",  "round down double as int16");
+    is($object->get_last_message_param, "2.1", "round down double as int16");
+
+    $myobject->ScalarInt16(2.9);
+    is($object->get_last_message_signature, "s",  "round up double as int16");
+    is($object->get_last_message_param, "2.9", "round up double as int16");
+
+    $myobject->ScalarInt16(2.5);
+    is($object->get_last_message_signature, "s",  "round up double threshold as int16");
+    is($object->get_last_message_param, "2.5", "round up double threshold as int16");
+
+    $myobject->ScalarInt16(-2.1);
+    is($object->get_last_message_signature, "s",  "-ve round up double as int16");
+    is($object->get_last_message_param, "-2.1", "-ve round up double as int16");
+        
+    $myobject->ScalarInt16(-2.9);
+    is($object->get_last_message_signature, "s",  "-ve round down double as int16");
+    is($object->get_last_message_param, "-2.9", "-ve round down double as int16");
+
+    $myobject->ScalarInt16(-2.5);
+    is($object->get_last_message_signature, "s",  "-ve round down double threshold as int16");
+    is($object->get_last_message_param, "-2.5", "-ve round down double threshold as int16");
+    
+
+    #### UINT 16 tests
+
+    # Positive integers
+    $myobject->ScalarUInt16("2");
+    is($object->get_last_message_signature, "s", "string as uint16");
+    is($object->get_last_message_param, "2", "string as uint16");
+
+    $myobject->ScalarUInt16(2);
+    is($object->get_last_message_signature, "s", "int as uint16");
+    is($object->get_last_message_param, "2", "int as uint16");
+
+    $myobject->ScalarUInt16(2.0);
+    is($object->get_last_message_signature, "s", "double as uint16");
+    is($object->get_last_message_param, "2", "double as uint16");
+
+    # Negative integers
+    $myobject->ScalarUInt16("-2");
+    is($object->get_last_message_signature, "s", "-ve string as uint16");
+    is($object->get_last_message_param, "-2", "-ve string as uint16");
+
+    $myobject->ScalarUInt16(-2);
+    is($object->get_last_message_signature, "s", "-ve int as uint16");
+    is($object->get_last_message_param, "-2", "-ve int as uint16");
+
+    $myobject->ScalarUInt16(-2.0);
+    is($object->get_last_message_signature, "s", "-ve double as uint16");
+    is($object->get_last_message_param, "-2", "-ve double as uint16");
+
+
+    # Rounding of doubles
+    $myobject->ScalarUInt16(2.1);
+    is($object->get_last_message_signature, "s", "round down double as uint16");
+    is($object->get_last_message_param, "2.1", "round down double as uint16");
+
+    $myobject->ScalarUInt16(2.9);
+    is($object->get_last_message_signature, "s", "round up double as uint16");
+    is($object->get_last_message_param, "2.9", "round up double as uint16");
+
+    $myobject->ScalarUInt16(2.5);
+    is($object->get_last_message_signature, "s", "round up double threshold as uint16");
+    is($object->get_last_message_param, "2.5", "round up double threshold as uint16");
+
+    
     #### INT 32 tests
 
     # Positive integers
@@ -249,6 +346,124 @@ TEST_MANUAL_TYPING: {
     is($object->get_last_message_param, "5.234", "double as string");
     
 
+    #### INT 16 tests
+
+    # Positive integers
+    $myobject->ScalarInt16(dbus_int16("2"));
+    is($object->get_last_message_signature, "n", "string as int16");
+    is($object->get_last_message_param, 2, "string as int16");
+
+    $myobject->ScalarInt16(dbus_int16(2));
+    is($object->get_last_message_signature, "n", "int as int16");
+    is($object->get_last_message_param, 2, "int as int16");
+
+    $myobject->ScalarInt16(dbus_int16(2.0));
+    is($object->get_last_message_signature, "n", "double as int16");
+    is($object->get_last_message_param, 2, "double as int16");
+
+    # Negative integers
+    $myobject->ScalarInt16(dbus_int16("-2"));
+    is($object->get_last_message_signature, "n", "-ve string as int16");
+    is($object->get_last_message_param, -2, "-ve string as int16");
+
+    $myobject->ScalarInt16(dbus_int16(-2));
+    is($object->get_last_message_signature, "n", "-ve int as int16");
+    is($object->get_last_message_param, -2, "-ve int as int16");
+
+    $myobject->ScalarInt16(dbus_int16(-2.0));
+    is($object->get_last_message_signature, "n",  "-ve double as int16");
+    is($object->get_last_message_param, -2, "-ve double as int16");
+
+    # Rounding of doubles
+    $myobject->ScalarInt16(dbus_int16(2.1));
+    is($object->get_last_message_signature, "n",  "round down double as int16");
+    is($object->get_last_message_param, 2, "round down double as int16");
+
+    $myobject->ScalarInt16(dbus_int16(2.9));
+    is($object->get_last_message_signature, "n",  "round up double as int16");
+  SKIP: {
+      skip "rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double as int16");
+  }
+    $myobject->ScalarInt16(dbus_int16(2.5));
+    is($object->get_last_message_signature, "n",  "round up double threshold as int16");
+  SKIP: {
+      skip "rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double threshold as int16");
+  }
+
+    $myobject->ScalarInt16(dbus_int16(-2.1));
+    is($object->get_last_message_signature, "n",  "-ve round up double as int16");
+    is($object->get_last_message_param, -2, "-ve round up double as int16");
+        
+    $myobject->ScalarInt16(dbus_int16(-2.9));
+    is($object->get_last_message_signature, "n",  "-ve round down double as int16");
+  SKIP: {
+      skip "rounding actually truncates", 1;
+      is($object->get_last_message_param, -3, "-ve round down double as int16");
+  }
+
+    $myobject->ScalarInt16(dbus_int16(-2.5));
+    is($object->get_last_message_signature, "n",  "-ve round down double threshold as int16");
+    is($object->get_last_message_param, -2, "-ve round down double threshold as int16");
+    
+
+    #### UINT 16 tests
+
+    # Positive integers
+    $myobject->ScalarUInt16(dbus_uint16("2"));
+    is($object->get_last_message_signature, "q", "string as uint16");
+    is($object->get_last_message_param, 2, "string as uint16");
+
+    $myobject->ScalarUInt16(dbus_uint16(2));
+    is($object->get_last_message_signature, "q", "int as uint16");
+    is($object->get_last_message_param, 2, "int as uint16");
+
+    $myobject->ScalarUInt16(dbus_uint16(2.0));
+    is($object->get_last_message_signature, "q", "double as uint16");
+    is($object->get_last_message_param, 2, "double as uint16");
+
+    # Negative integers
+    $myobject->ScalarUInt16(dbus_uint16("-2"));
+    is($object->get_last_message_signature, "q", "-ve string as uint16");
+  SKIP: {
+      skip "sign truncation is wrong", 1;
+      is($object->get_last_message_param, -2, "-ve string as uint16");
+  }
+
+    $myobject->ScalarUInt16(dbus_uint16(-2));
+    is($object->get_last_message_signature, "q", "-ve int as uint16");
+  SKIP: {
+      skip "sign truncation is wrong", 1;
+      is($object->get_last_message_param, -2, "-ve int as uint16");
+  }
+
+    $myobject->ScalarUInt16(dbus_uint16(-2.0));
+    is($object->get_last_message_signature, "q", "-ve double as uint16");
+  SKIP: {
+      skip "sign truncation is wrong", 1;
+      is($object->get_last_message_param, -2, "-ve double as uint16");
+  }
+
+    # Rounding of doubles
+    $myobject->ScalarUInt16(dbus_uint16(2.1));
+    is($object->get_last_message_signature, "q", "round down double as uint16");
+    is($object->get_last_message_param, 2, "round down double as uint16");
+
+    $myobject->ScalarUInt16(dbus_uint16(2.9));
+    is($object->get_last_message_signature, "q", "round up double as uint16");
+  SKIP: {
+      skip "rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double as uint16");
+  }
+
+    $myobject->ScalarUInt16(dbus_uint16(2.5));
+    is($object->get_last_message_signature, "q", "round up double threshold as uint16");
+  SKIP: {
+      skip "rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double threshold as uint16");
+  }
+    
     #### INT 32 tests
 
     # Positive integers
@@ -489,6 +704,8 @@ TEST_INTROSPECT_TYPING: {
 
     my $ins = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
     $ins->add_method("ScalarString", ["string"], [], "org.example.MyObject");
+    $ins->add_method("ScalarInt16", ["int16"], [], "org.example.MyObject");
+    $ins->add_method("ScalarUInt16", ["uint16"], [], "org.example.MyObject");
     $ins->add_method("ScalarInt32", ["int32"], [], "org.example.MyObject");
     $ins->add_method("ScalarUInt32", ["uint32"], [], "org.example.MyObject");
     $ins->add_method("ScalarDouble", ["double"], [], "org.example.MyObject");
@@ -512,6 +729,135 @@ TEST_INTROSPECT_TYPING: {
     is($object->get_last_message_param, "5.234", "double as string");
     
 
+    #### INT 16 tests
+
+    # Positive integers
+    $myobject->ScalarInt16("2");
+    is($object->get_last_message_signature, "n", "string as int16");
+    is($object->get_last_message_param, 2, "string as int16");
+
+    $myobject->ScalarInt16(2);
+    is($object->get_last_message_signature, "n", "int as int16");
+    is($object->get_last_message_param, 2, "int as int16");
+
+    $myobject->ScalarInt16(2.0);
+    is($object->get_last_message_signature, "n", "double as int16");
+    is($object->get_last_message_param, 2, "double as int16");
+
+    # Negative integers
+    $myobject->ScalarInt16("-2");
+    is($object->get_last_message_signature, "n", "-ve string as int16");
+  SKIP: {
+      skip "sign truncation not checked", 1;
+      is($object->get_last_message_param, "-2", "-ve string as int16");
+  }
+
+    $myobject->ScalarInt16(-2);
+    is($object->get_last_message_signature, "n", "-ve int as int16");
+  SKIP: {
+      skip "sign truncation not checked", 1;
+      is($object->get_last_message_param, "-2", "-ve int as int16");
+  }
+
+    $myobject->ScalarInt16(-2.0);
+    is($object->get_last_message_signature, "n",  "-ve double as int16");
+  SKIP: {
+      skip "sign truncation not checked", 1;
+      is($object->get_last_message_param, "-2.0", "-ve double as int16");
+  }
+
+    # Rounding of doubles
+    $myobject->ScalarInt16(2.1);
+    is($object->get_last_message_signature, "n",  "round down double as int16");
+    is($object->get_last_message_param, 2, "round down double as int16");
+
+    $myobject->ScalarInt16(2.9);
+    is($object->get_last_message_signature, "n",  "round up double as int16");
+  SKIP: {
+      skip "double -> int rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double as int16");
+  }
+
+    $myobject->ScalarInt16(2.5);
+    is($object->get_last_message_signature, "n",  "round up double threshold as int16");
+  SKIP: {
+      skip "double -> int rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double threshold as int16");
+  }
+
+    $myobject->ScalarInt16(-2.1);
+    is($object->get_last_message_signature, "n",  "-ve round up double as int16");
+    is($object->get_last_message_param, -2, "-ve round up double as int16");
+        
+    $myobject->ScalarInt16(-2.9);
+    is($object->get_last_message_signature, "n",  "-ve round down double as int16");
+  SKIP: {
+      skip "double -> int rounding actually truncates", 1;
+      is($object->get_last_message_param, -3, "-ve round down double as int16");
+  }
+
+    $myobject->ScalarInt16(-2.5);
+    is($object->get_last_message_signature, "n",  "-ve round down double threshold as int16");
+    is($object->get_last_message_param, -2, "-ve round down double threshold as int16");
+    
+
+    #### UINT 16 tests
+
+    # Positive integers
+    $myobject->ScalarUInt16("2");
+    is($object->get_last_message_signature, "q", "string as uint16");
+    is($object->get_last_message_param, 2, "string as uint16");
+
+    $myobject->ScalarUInt16(2);
+    is($object->get_last_message_signature, "q", "int as uint16");
+    is($object->get_last_message_param, 2, "int as uint16");
+
+    $myobject->ScalarUInt16(2.0);
+    is($object->get_last_message_signature, "q", "double as uint16");
+    is($object->get_last_message_param, 2, "double as uint16");
+
+    # Negative integers
+    $myobject->ScalarUInt16("-2");
+    is($object->get_last_message_signature, "q", "-ve string as uint16");
+  SKIP: {
+      skip "sign truncation not checked", 1;
+      is($object->get_last_message_param, -2, "-ve string as uint16");
+  }
+
+    $myobject->ScalarUInt16(-2);
+    is($object->get_last_message_signature, "q", "-ve int as uint16");
+  SKIP: {
+      skip "sign truncation not checked", 1;
+      is($object->get_last_message_param, -2, "-ve int as uint16");
+  }
+
+    $myobject->ScalarUInt16(-2.0);
+    is($object->get_last_message_signature, "q", "-ve double as uint16");
+  SKIP: {
+      skip "sign truncation not checked", 1;
+      is($object->get_last_message_param, -2, "-ve double as uint16");
+  }
+
+
+    # Rounding of doubles
+    $myobject->ScalarUInt16(2.1);
+    is($object->get_last_message_signature, "q", "round down double as uint16");
+    is($object->get_last_message_param, 2, "round down double as uint16");
+
+    $myobject->ScalarUInt16(2.9);
+    is($object->get_last_message_signature, "q", "round up double as uint16");
+  SKIP: {
+      skip "double -> int rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double as uint16");
+  }
+
+    $myobject->ScalarUInt16(2.5);
+    is($object->get_last_message_signature, "q", "round up double threshold as uint16");
+  SKIP: {
+      skip "double -> int rounding actually truncates", 1;
+      is($object->get_last_message_param, 3, "round up double threshold as uint16");
+  }
+    
     #### INT 32 tests
 
     # Positive integers
@@ -771,6 +1117,8 @@ sub setup {
     my $otherobject = $robject->as_interface("org.example.OtherObject");
 
     $object->seed_action("org.example.MyObject", "ScalarString", reply => { return => [] });
+    $object->seed_action("org.example.MyObject", "ScalarInt16", reply => { return => [] });
+    $object->seed_action("org.example.MyObject", "ScalarUInt16", reply => { return => [] });
     $object->seed_action("org.example.MyObject", "ScalarInt32", reply => { return => [] });
     $object->seed_action("org.example.MyObject", "ScalarUInt32", reply => { return => [] });
     $object->seed_action("org.example.MyObject", "ScalarDouble", reply => { return => [] });

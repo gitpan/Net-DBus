@@ -119,6 +119,34 @@ message iterator.
 Read or write a UTF-8 string value from/to the
 message iterator
 
+=item my $val = $iter->get_object_path()
+
+=item $iter->append_object_path($val);
+
+Read or write a UTF-8 string value, whose contents is
+a valid object path, from/to the message iterator
+
+=item my $val = $iter->get_signature()
+
+=item $iter->append_signature($val);
+
+Read or write a UTF-8 string, whose contents is a 
+valid type signature, value from/to the message iterator
+
+=item my $val = $iter->get_int16()
+
+=item $iter->append_int16($val);
+
+Read or write a signed 16 bit value from/to the
+message iterator
+
+=item my $val = $iter->get_uint16()
+
+=item $iter->append_uint16($val);
+
+Read or write an unsigned 16 bit value from/to the
+message iterator
+
 =item my $val = $iter->get_int32()
 
 =item $iter->append_int32($val);
@@ -231,6 +259,10 @@ sub get {
 	return $self->get_boolean;
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_BYTE) {
 	return $self->get_byte;
+    } elsif ($type == &Net::DBus::Binding::Message::TYPE_INT16) {
+	return $self->get_int16;
+    } elsif ($type == &Net::DBus::Binding::Message::TYPE_UINT16) {
+	return $self->get_uint16;
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_INT32) {
 	return $self->get_int32;
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_UINT32) {
@@ -257,9 +289,9 @@ sub get {
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_INVALID) {
 	confess "cannot handle Net::DBus::Binding::Message::TYPE_INVALID";
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_OBJECT_PATH) {
-	return $self->get_string();
+	return $self->get_object_path();
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_SIGNATURE) {
-	return $self->get_string();
+	return $self->get_signature();
     } else {
 	confess "unknown argument type '" . chr($type) . "' ($type)";
     }
@@ -380,7 +412,7 @@ sub append {
     my $self = shift;
     my $value = shift;
     my $type = shift;
-    
+
     if (ref($value) eq "Net::DBus::Binding::Value") {
 	$type = $value->type;
 	$value = $value->value;
@@ -393,17 +425,19 @@ sub append {
     if (ref($type) eq "ARRAY") {
 	my $maintype = $type->[0];
 	my $subtype = $type->[1];
-	
+
 	if ($maintype == &Net::DBus::Binding::Message::TYPE_DICT_ENTRY) {
 	    $self->append_dict($value, $subtype);
 	} elsif ($maintype == &Net::DBus::Binding::Message::TYPE_STRUCT) {
 	    $self->append_struct($value, $subtype);
 	} elsif ($maintype == &Net::DBus::Binding::Message::TYPE_ARRAY) {
 	    $self->append_array($value, $subtype);
+	} elsif ($maintype == &Net::DBus::Binding::Message::TYPE_VARIANT) {
+	    $self->append_variant($value, $subtype);
 	} else {
-	    confess "Unsupported compound type ", $maintype;
+	    confess "Unsupported compound type ", $maintype, " ('", chr($maintype), "')";
 	}
-    } else {	
+    } else {
 	# XXX is this good idea or not
 	$value = '' unless defined $value;
 
@@ -413,6 +447,10 @@ sub append {
 	    $self->append_byte($value);
 	} elsif ($type == &Net::DBus::Binding::Message::TYPE_STRING) {
 	    $self->append_string($value);
+	} elsif ($type == &Net::DBus::Binding::Message::TYPE_INT16) {
+	    $self->append_int16($value);
+	} elsif ($type == &Net::DBus::Binding::Message::TYPE_UINT16) {
+	    $self->append_uint16($value);
 	} elsif ($type == &Net::DBus::Binding::Message::TYPE_INT32) {
 	    $self->append_int32($value);
 	} elsif ($type == &Net::DBus::Binding::Message::TYPE_UINT32) {
@@ -424,11 +462,11 @@ sub append {
 	} elsif ($type == &Net::DBus::Binding::Message::TYPE_DOUBLE) {
 	    $self->append_double($value);
 	} elsif ($type == &Net::DBus::Binding::Message::TYPE_OBJECT_PATH) {
-	    $self->append_string($value);
-	} elsif ($type == &Net::DBus::Binding::Message::TYPE_VARIANT) {
-	    $self->append_variant($value);
+	    $self->append_object_path($value);
+	} elsif ($type == &Net::DBus::Binding::Message::TYPE_SIGNATURE) {
+	    $self->append_signature($value);
 	} else {
-	    confess "Unsupported scalar type ", $type;
+	    confess "Unsupported scalar type ", $type, " ('", chr($type), "')";
 	}
     }
 }
@@ -447,9 +485,31 @@ type is returned.
 sub guess_type {
     my $self = shift;
     my $value = shift;
-    
+
     if (ref($value)) {
-	if (ref($value) eq "HASH") {
+	if (UNIVERSAL::isa($value, "Net::DBus::Binding::Value")) {
+	    my $type = $value->type;
+	    if (ref($type) && ref($type) eq "ARRAY") {
+		my $maintype = $type->[0];
+		my $subtype = $type->[1];
+
+		if (!defined $subtype) {
+		    if ($maintype == &Net::DBus::Binding::Message::TYPE_DICT_ENTRY) {
+			$subtype = [ $self->guess_type(($value->value())[0]->[0]), 
+				     $self->guess_type(($value->value())[0]->[1]) ];
+		    } elsif ($maintype == &Net::DBus::Binding::Message::TYPE_ARRAY) {
+			$subtype = [ $self->guess_type(($value->value())[0]->[0]) ];
+		    } elsif ($maintype == &Net::DBus::Binding::Message::TYPE_STRUCT) {
+			$subtype = [ map { $self->guess_type($_) } @{($value->value())[0]} ];
+		    } else {
+			die "Unguessable compound type '$maintype' ('", chr($maintype), "')\n";
+		    }
+		}
+		return [$maintype, $subtype];
+	    } else {
+		return $type;
+	    }
+	} elsif (ref($value) eq "HASH") {
 	    my $key = (keys %{$value})[0];
 	    my $val = $value->{$key};
 	    # XXX Basically impossible to decide between DICT & STRUCT
@@ -469,32 +529,32 @@ sub guess_type {
     }
 }
 
-=item my $sig = $iter->get_signature($type)
+=item my $sig = $iter->format_signature($type)
 
 Given a data type representation, construct a corresponding 
 signature string
 
 =cut
 
-sub get_signature {
+sub format_signature {
     my $self = shift;
     my $type = shift;
     my ($sig, $t, $i);
 
     $sig = "";
-    $i = 0;
+    $i = 0;use Data::Dumper;
 
     if (ref($type) eq "ARRAY") {
 	while ($i <= $#{$type}) {
 	    $t = $$type[$i];
 	    
 	    if (ref($t) eq "ARRAY") {
-		$sig .= $self->get_signature($t);
+		$sig .= $self->format_signature($t);
 	    } elsif ($t == &Net::DBus::Binding::Message::TYPE_DICT_ENTRY) {
 		$sig .= chr (&Net::DBus::Binding::Message::TYPE_ARRAY);
-		$sig .= "{" . $self->get_signature($$type[++$i]) . "}";
+		$sig .= "{" . $self->format_signature($$type[++$i]) . "}";
 	    } elsif ($t == &Net::DBus::Binding::Message::TYPE_STRUCT) {
-		$sig .= "(" . $self->get_signature($$type[++$i]) . ")";
+		$sig .= "(" . $self->format_signature($$type[++$i]) . ")";
 	    } else {
 		$sig .= chr($t);
 	    }
@@ -520,11 +580,15 @@ sub append_array {
     my $self = shift;
     my $array = shift;
     my $type = shift;
+    
+    if (!defined($type)) {
+	$type = [$self->guess_type($array->[0])];
+    }
 
     die "array must only have one type"
 	if $#{$type} > 0;
 
-    my $sig = $self->get_signature($type);
+    my $sig = $self->format_signature($type);
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_ARRAY, $sig);
     
     foreach my $value (@{$array}) {
@@ -549,13 +613,14 @@ sub append_struct {
     my $struct = shift;
     my $type = shift;
 
-    if ($#{$struct} != $#{$type}) {
+    if (defined($type) &&
+	$#{$struct} != $#{$type}) {
 	die "number of values does not match type";
     }
 
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_STRUCT, "");
     
-    my @type = @{$type};
+    my @type = defined $type ? @{$type} : ();
     foreach my $value (@{$struct}) {
 	$iter->append($value, shift @type);
     }
@@ -579,7 +644,7 @@ sub append_dict {
     my $sig;
 
     $sig  = "{";
-    $sig .= $self->get_signature($type);
+    $sig .= $self->format_signature($type);
     $sig .= "}";
 
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_ARRAY, $sig);
@@ -607,11 +672,20 @@ the rules of the C<guess_type> method.
 sub append_variant {
     my $self = shift;
     my $value = shift;
-    
-    my $type = $self->guess_type($value);
-    my $sig = $self->get_signature($type);
+    my $type = shift;
+
+    if (UNIVERSAL::isa($value, "Net::DBus::Binding::Value")) {
+	$type = [$self->guess_type($value)];
+	$value = $value->value;
+    } elsif (!defined $type || !defined $type->[0]) {
+	$type = [$self->guess_type($value)];
+    }
+    die "variant must only have one type"
+	if defined $type && $#{$type} > 0;
+
+    my $sig = $self->format_signature($type->[0]);
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_VARIANT, $sig);
-    $iter->append($value, $type);
+    $iter->append($value, $type->[0]);
     $self->_close_container($iter);
 }
 

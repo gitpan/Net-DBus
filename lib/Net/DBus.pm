@@ -22,7 +22,7 @@
 
 =head1 NAME
 
-DBus - Perl extension for the DBus message system
+Net::DBus - Perl extension for the DBus message system
 
 =head1 SYNOPSIS
 
@@ -92,7 +92,7 @@ use Carp;
 
 
 BEGIN {
-    our $VERSION = '0.33.1';
+    our $VERSION = '0.33.2';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -109,13 +109,15 @@ use Exporter qw(import);
 
 use vars qw(@EXPORT_OK %EXPORT_TAGS);
 
-@EXPORT_OK = qw(dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
+@EXPORT_OK = qw(dbus_int16 dbus_uint16 dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
 		dbus_byte dbus_boolean dbus_string dbus_double
-		dbus_struct dbus_array dbus_dict);
+                dbus_object_path dbus_signature
+		dbus_struct dbus_array dbus_dict dbus_variant);
 
-%EXPORT_TAGS = (typing => [qw(dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
+%EXPORT_TAGS = (typing => [qw(dbus_int16 dbus_uint16 dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
 			      dbus_byte dbus_boolean dbus_string dbus_double
-			      dbus_struct dbus_array dbus_dict)]);
+                              dbus_object_path dbus_signature
+			      dbus_struct dbus_array dbus_dict dbus_variant)]);
 
 =item my $bus = Net::DBus->find(%params);
 
@@ -518,6 +520,30 @@ specifying 'use Net::DBus qw(:typing)'
 
 =over 4
 
+=item $typed_value = dbus_int16($value);
+
+Mark a value as being a signed, 16-bit integer.
+
+=cut
+
+sub dbus_int16 {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_INT16,
+					  $_[0]);
+					  
+}
+
+=item $typed_value = dbus_uint16($value);
+
+Mark a value as being an unsigned, 16-bit integer.
+
+=cut
+
+
+sub dbus_uint16 {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_UINT16,
+					  $_[0]);
+}
+
 =item $typed_value = dbus_int32($value);
 
 Mark a value as being a signed, 32-bit integer.
@@ -609,6 +635,32 @@ sub dbus_string {
 					  $_[0]);
 }
 
+=item $typed_value = dbus_signature($value);
+
+Mark a value as being a UTF-8 string, whose contents is a valid 
+type signature
+
+=cut
+
+
+
+sub dbus_signature {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_SIGNATURE,
+					  $_[0]);
+}
+
+=item $typed_value = dbus_object_path($value);
+
+Mark a value as being a UTF-8 string, whose contents is a valid
+object path.
+
+=cut
+
+sub dbus_object_path {
+    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_OBJECT_PATH,
+					  $_[0]);
+}
+
 =item $typed_value = dbus_boolean($value);
 
 Mark a value as being an boolean
@@ -630,7 +682,7 @@ Mark a value as being an array
 
 
 sub dbus_array {
-    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_ARRAY,
+    return Net::DBus::Binding::Value->new([&Net::DBus::Binding::Message::TYPE_ARRAY],
 					  $_[0]);
 }
 
@@ -642,7 +694,7 @@ Mark a value as being a structure
 
 
 sub dbus_struct {
-    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_STRUCT,
+    return Net::DBus::Binding::Value->new([&Net::DBus::Binding::Message::TYPE_STRUCT],
 					  $_[0]);
 }
 
@@ -653,7 +705,18 @@ Mark a value as being a dictionary
 =cut
 
 sub dbus_dict{
-    return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_DICT_ENTRY,
+    return Net::DBus::Binding::Value->new([&Net::DBus::Binding::Message::TYPE_DICT_ENTRY],
+					  $_[0]);
+}
+
+=item $typed_value = dbus_variant($value);
+
+Mark a value as being a variant
+
+=cut
+
+sub dbus_variant{
+    return Net::DBus::Binding::Value->new([&Net::DBus::Binding::Message::TYPE_VARIANT],
 					  $_[0]);
 }
 

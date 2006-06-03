@@ -1,5 +1,5 @@
 # -*- perl -*-
-use Test::More tests => 21;
+use Test::More tests => 25;
 BEGIN { 
         use_ok('Net::DBus::Binding::Iterator');
         use_ok('Net::DBus::Binding::Message::Signal');
@@ -16,6 +16,8 @@ my $msg = Net::DBus::Binding::Message::Signal->new(object_path => "/foo/bar/Wizz
 my $iter = $msg->iterator(1);
 $iter->append_boolean(1);
 $iter->append_byte(43);
+$iter->append_int16(123);
+$iter->append_uint16(456);
 $iter->append_int32(123);
 $iter->append_uint32(456);
 if ($Net::DBus::Binding::Iterator::have_quads) {
@@ -32,6 +34,11 @@ $iter = $msg->iterator();
 ok($iter->get_boolean() == 1, "boolean");
 ok($iter->next(), "next");
 ok($iter->get_byte() == 43, "byte");
+ok($iter->next(), "next");
+
+ok($iter->get_int16() == 123, "int16");
+ok($iter->next(), "next");
+ok($iter->get_uint16() == 456, "uint16");
 ok($iter->next(), "next");
 
 ok($iter->get_int32() == 123, "int32");

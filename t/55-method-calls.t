@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 67;
+use Test::More tests => 56;
 
 use strict;
 use warnings;
@@ -34,10 +34,6 @@ TEST_NO_INTROSPECT: {
     &test_method_fail("raw, no introspect", $robject, "Deprecated");
     &test_method_reply("myobject, no introspect",$myobject, "Deprecated", "TestedDeprecation");
     &test_method_fail("otherobject, no introspect",$otherobject, "Deprecated");
-
-    &test_method_fail("raw, no introspect", $robject, "TestNoReturn");
-    &test_method_fail("myobject, no introspect",$myobject, "TestNoReturn");
-    &test_method_fail("otherobject, no introspect",$otherobject, "TestNoReturn");
 }
 
 TEST_MISSING_INTROSPECT: {
@@ -63,10 +59,6 @@ TEST_MISSING_INTROSPECT: {
     &test_method_fail("raw, no introspect", $robject, "Deprecated");
     &test_method_reply("myobject, no introspect",$myobject, "Deprecated", "TestedDeprecation");
     &test_method_fail("otherobject, no introspect",$otherobject, "Deprecated");
-
-    &test_method_fail("raw, no introspect", $robject, "TestNoReturn");
-    &test_method_fail("myobject, no introspect",$myobject, "TestNoReturn");
-    &test_method_fail("otherobject, no introspect",$otherobject, "TestNoReturn");
 }
 
 TEST_FULL_INTROSPECT: {
@@ -77,7 +69,6 @@ TEST_FULL_INTROSPECT: {
     $ins->add_method("PolyTest", [], ["string"], "org.example.MyObject");
     $ins->add_method("PolyTest", [], ["string"], "org.example.OtherObject");
     $ins->add_method("Deprecated", [], ["string"], "org.example.MyObject", { deprecated => 1 });
-    $ins->add_method("TestNoReturn", [], [], "org.example.MyObject", { no_return => 1 });
     $object->seed_action("org.freedesktop.DBus.Introspectable", "Introspect", 
 			 reply => { return => [ $ins->format ] });
     
@@ -110,10 +101,6 @@ TEST_FULL_INTROSPECT: {
 	&test_method_fail("otherobject, no introspect",$otherobject, "Deprecated");
 	ok(!$warned, "deprecation warning generated");
     }
-
-    &test_method_noreply("raw, no introspect", $robject, "TestNoReturn");
-    &test_method_noreply("myobject, no introspect",$myobject, "TestNoReturn");
-    &test_method_fail("otherobject, no introspect",$otherobject, "TestNoReturn");
 }
 
 

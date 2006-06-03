@@ -214,6 +214,41 @@ sub add_filter {
     push @{$self->{filters}}, $cb;
 }
 
+=item $bus->add_match($rule)
+
+Register a signal match rule with the bus controller, allowing
+matching broadcast signals to routed to this client. In reality
+this is just a no-op giving the impression that the match was
+successfully registered.
+
+=cut
+
+sub add_match {
+    my $self = shift;
+    my $rule = shift;
+    
+    # XXX do we need to implement anything ? probably not 
+    # nada
+}
+
+=item $bus->remove_match($rule)
+
+Unregister a signal match rule with the bus controller, preventing
+further broadcast signals being routed to this client. In reality
+this is just a no-op giving the impression that the match was
+successfully unregistered.
+
+=cut
+
+sub remove_match {
+    my $self = shift;
+    my $rule = shift;
+    
+    # XXX do we need to implement anything ? probably not 
+    # nada
+}
+
+
 =item $con->register_object_path($path, \&handler)
 
 Registers a handler for messages whose path matches
