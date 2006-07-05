@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: RemoteObject.pm,v 1.20 2006/01/27 15:34:24 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -54,11 +52,9 @@ package Net::DBus::RemoteObject;
 use 5.006;
 use strict;
 use warnings;
-use Carp;
 
 our $AUTOLOAD;
 
-use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Introspector;
 use Net::DBus::ASyncReply;
 use Net::DBus::Annotation qw(:call);
@@ -165,18 +161,17 @@ sub get_child_object {
 sub _introspector {
     my $self = shift;
 
+
     unless ($self->{introspected}) {
-	my $call = Net::DBus::Binding::Message::MethodCall->
-	    new(service_name => $self->{service}->get_service_name(),
-		object_path => $self->{object_path},
-		method_name => "Introspect",
-		interface => "org.freedesktop.DBus.Introspectable");
+	my $con = $self->{service}->get_bus()->get_connection();
+
+	my $call = $con->make_method_call_message($self->{service}->get_service_name(),
+						  $self->{object_path},
+						  "org.freedesktop.DBus.Introspectable",
+						  "Introspect");
 
 	my $xml = eval {
-	    my $reply = $self->{service}->
-		get_bus()->
-		get_connection()->
-		send_with_reply_and_block($call, 60 * 1000);
+	    my $reply = $con->send_with_reply_and_block($call, 60 * 1000);
 
 	    my $iter = $reply->iterator;
 	    return $iter->get(&Net::DBus::Binding::Message::TYPE_STRING);
@@ -351,17 +346,18 @@ sub _call_method {
     my $interface = shift;
     my $introspect = shift;
 
+    my $con = $self->{service}->get_bus()->get_connection();
+
     my $ins = $introspect ? $self->_introspector : undef;
     if ($ins &&
 	$ins->is_method_deprecated($name, $interface)) {
 	warn "method '$name' in interface $interface on object " . $self->get_object_path . " is deprecated\n";
     }
 
-    my $call = Net::DBus::Binding::Message::MethodCall->
-	new(service_name => $self->{service}->get_service_name(),
-	    object_path => $self->{object_path},
-	    method_name => $name,
-	    interface => $interface);
+    my $call = $con->make_method_call_message($self->{service}->get_service_name(),
+					      $self->{object_path},
+					      $interface,
+					      $name);
 
     #$call->set_destination($self->get_service->get_owner_name);
 
@@ -372,9 +368,7 @@ sub _call_method {
     }
 
     if ($mode == dbus_call_sync) {
-	my $reply = $self->{service}->
-	    get_bus()->
-	    get_connection()->
+	my $reply = $con->
 	    send_with_reply_and_block($call, 60 * 1000);
 
 	my @reply;

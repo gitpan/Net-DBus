@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+use warnings;
+use strict;
+
 use Net::DBus;
 use Net::DBus::Dumper;
 use Carp qw(confess);

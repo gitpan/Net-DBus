@@ -1,6 +1,9 @@
 # -*- perl -*-
 use Test::More tests => 5;
 
+use strict;
+use warnings;
+
 BEGIN {
     use_ok('Net::DBus::Callback');
 };

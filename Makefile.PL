@@ -19,8 +19,7 @@ WriteMakefile(
 	      'PREREQ_PM' => {
 		  'Test::More'  => 0,
 		  'Time::HiRes' => 0,
-		  'XML::Grove' => 0,
-		  'XML::Parser' => 0
+		  'XML::Twig' => 0,
 		  },
 #    'ABSTRACT_FROM' => 'lib/Net/DBus.pm',
 	      'AUTHOR' => 'Daniel Berrange <dan@berrange.com>',

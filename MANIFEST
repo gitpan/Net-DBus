@@ -4,8 +4,10 @@ CHANGES
 COPYING
 DBus.xs
 examples/dump-object.pl
+examples/example-client-async.pl
 examples/example-client-no-introspect.pl
 examples/example-client.pl
+examples/example-service-async.pl
 examples/example-service-no-introspect.pl
 examples/example-service.pl
 examples/example-signal-emitter.pl
@@ -29,6 +31,7 @@ lib/Net/DBus/Binding/Value.pm
 lib/Net/DBus/Binding/Watch.pm
 lib/Net/DBus/Callback.pm
 lib/Net/DBus/Dumper.pm
+lib/Net/DBus/Error.pm
 lib/Net/DBus/Exporter.pm
 lib/Net/DBus/Object.pm
 lib/Net/DBus/Reactor.pm
@@ -36,6 +39,8 @@ lib/Net/DBus/RemoteObject.pm
 lib/Net/DBus/RemoteService.pm
 lib/Net/DBus/Service.pm
 lib/Net/DBus/Test/MockConnection.pm
+lib/Net/DBus/Test/MockIterator.pm
+lib/Net/DBus/Test/MockMessage.pm
 lib/Net/DBus/Test/MockObject.pm
 lib/Net/DBus/Tutorial.pod
 lib/Net/DBus/Tutorial/ExportingObjects.pod
@@ -54,11 +59,13 @@ t/20-callback.t
 t/25-reactor.t
 t/30-server.t
 t/40-introspector.t
+t/42-object-introspect-avahi.t
 t/45-exporter.t
 t/50-object-introspect.t
 t/55-method-calls.t
 t/56-scalar-param-typing.t
 t/60-object-props.t
 t/65-object-magic.t
+t/70-errors.t
 typemap
 Net-DBus.spec

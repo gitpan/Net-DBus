@@ -1,6 +1,9 @@
 # -*- perl -*-
 use Test::More tests => 11;
 
+use strict;
+use warnings;
+
 BEGIN { 
         use_ok('Net::DBus::Binding::Server');
         use_ok('Net::DBus::Binding::Connection');

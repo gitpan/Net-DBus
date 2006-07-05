@@ -2,21 +2,19 @@
 #
 # Copyright (C) 2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: PendingCall.pm,v 1.8 2006/01/27 15:34:24 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -52,7 +50,6 @@ package Net::DBus::Binding::PendingCall;
 use 5.006;
 use strict;
 use warnings;
-use Carp;
 
 use Net::DBus;
 use Net::DBus::Binding::Message::MethodReturn;
@@ -74,6 +71,7 @@ sub new {
     my %params = @_;
     my $self = {};
 
+    $self->{connection} = exists $params{connection} ? $params{connection} : die "connection parameter is required";
     $self->{method_call} = exists $params{method_call} ? $params{method_call} : die "method_call parameter is required";
     $self->{pending_call} = exists $params{pending_call} ? $params{pending_call} : die "pending_call parameter is required";
 
@@ -135,14 +133,29 @@ sub get_reply {
     my $reply = $self->{pending_call}->dbus_pending_call_steal_reply();
     my $type = $reply->dbus_message_get_type;
     if ($type == &Net::DBus::Binding::Message::MESSAGE_TYPE_ERROR) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $self->{method_call},
-						       message => $reply);
+	return $self->{connection}->make_error_message($self->{method_call},
+						       $reply);
     } elsif ($type == &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN) {
-	return Net::DBus::Binding::Message::MethodReturn->new(call => $self->{method_call},
-							      message => $reply);
+	return $self->{connection}->make_method_return_message($self->{method_call},
+							       $reply);
     } else {
-	confess "unknown method reply type $type";
+	die "unknown method reply type $type";
     }
+}
+
+=item $call->set_notify($coderef);
+
+Sets a notification function to be invoked when the pending
+call completes. The callback will be passed a single argument
+which is this pending call object.
+
+=cut
+
+sub set_notify {
+    my $self = shift;
+    my $cb = shift;
+
+    $self->{pending_call}->_set_notify($cb);
 }
 
 1;

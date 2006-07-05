@@ -20,13 +20,13 @@
 
 =head1 NAME
 
-Net::DBus::Binding::Iterator - Reading and writing message parameters
+Net::DBus::Test::MockIterator - Iterator over a mock message
 
 =head1 SYNOPSIS
 
 Creating a new message
 
-  my $msg = new Net::DBus::Binding::Message::Signal;
+  my $msg = new Net::DBus::Test::MockMessage
   my $iterator = $msg->iterator;
 
   $iterator->append_boolean(1);
@@ -51,11 +51,10 @@ Reading from a mesage
 
 =head1 DESCRIPTION
 
-Provides an iterator for reading or writing message
-fields. This module provides a Perl API to access the
-dbus_message_iter_XXX methods in the C API. The array
-and dictionary types are not yet supported, and there
-are bugs in the Quad support (ie it always returns -1!).
+This module provides a "mock" counterpart to the L<Net::DBus::Binding::Iterator>
+object which is capable of iterating over mock message objects. Instances of this
+module are not created directly, instead they are obtained via the C<iterator>
+method on the L<Net::DBus::Test::MockMessage> module.
 
 =head1 METHODS
 
@@ -63,24 +62,26 @@ are bugs in the Quad support (ie it always returns -1!).
 
 =cut
 
-package Net::DBus::Binding::Iterator;
+package Net::DBus::Test::MockIterator;
 
 
 use 5.006;
 use strict;
 use warnings;
 
-use Net::DBus;
+sub _new {
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+    my $self = {};
+    my %params = @_;
 
-our $have_quads = 0;
+    $self->{data} = exists $params{data} ? $params{data} : die "data parameter is required";
+    $self->{append} = exists $params{append} ? $params{append} : 0;
+    $self->{position} = 0;
 
-BEGIN {
-  eval "pack 'Q', 1243456";
-  if ($@) {
-    $have_quads = 0;
-  } else {
-    $have_quads = 1;
-  }
+    bless $self, $class;
+
+    return $self;
 }
 
 =item $res = $iter->has_next()
@@ -89,11 +90,35 @@ Determines if there are any more fields in the message
 itertor to be read. Returns a positive value if there
 are more fields, zero otherwise.
 
+=cut
+
+sub has_next {
+    my $self = shift;
+
+    if ($self->{position} < $#{$self->{data}}) {
+	return 1;
+    }
+    return 0;
+}
+
+
 =item $success = $iter->next()
 
 Skips the iterator onto the next field in the message.
 Returns a positive value if the current field pointer
 was successfully advanced, zero otherwise.
+
+=cut
+
+sub next {
+    my $self = shift;
+
+    if ($self->{position} < $#{$self->{data}}) {
+	$self->{position}++;
+	return 1;
+    }
+    return 0;
+}
 
 =item my $val = $iter->get_boolean()
 
@@ -102,12 +127,37 @@ was successfully advanced, zero otherwise.
 Read or write a boolean value from/to the
 message iterator
 
+=cut
+
+sub get_boolean {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_BOOLEAN);
+}
+
+sub append_boolean {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_BOOLEAN, $_[0] ? 1 : "");
+}
+
 =item my $val = $iter->get_byte()
 
 =item $iter->append_byte($val);
 
 Read or write a single byte value from/to the
 message iterator.
+
+=cut
+
+sub get_byte {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_BYTE);
+}
+
+sub append_byte {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_BYTE, $_[0]);
+}
+
 
 =item my $val = $iter->get_string()
 
@@ -116,12 +166,38 @@ message iterator.
 Read or write a UTF-8 string value from/to the
 message iterator
 
+
+=cut
+
+sub get_string {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_STRING);
+}
+
+sub append_string {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_STRING, $_[0]);
+}
+
 =item my $val = $iter->get_object_path()
 
 =item $iter->append_object_path($val);
 
 Read or write a UTF-8 string value, whose contents is
 a valid object path, from/to the message iterator
+
+
+=cut
+
+sub get_object_path {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_OBJECT_PATH);
+}
+
+sub append_object_path {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_OBJECT_PATH, $_[0]);
+}
 
 =item my $val = $iter->get_signature()
 
@@ -130,12 +206,38 @@ a valid object path, from/to the message iterator
 Read or write a UTF-8 string, whose contents is a 
 valid type signature, value from/to the message iterator
 
+
+=cut
+
+sub get_signature {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_SIGNATURE);
+}
+
+sub append_signature {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_SIGNATURE, $_[0]);
+}
+
 =item my $val = $iter->get_int16()
 
 =item $iter->append_int16($val);
 
 Read or write a signed 16 bit value from/to the
 message iterator
+
+
+=cut
+
+sub get_int16 {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_INT16);
+}
+
+sub append_int16 {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_INT16, int($_[0]));
+}
 
 =item my $val = $iter->get_uint16()
 
@@ -144,6 +246,19 @@ message iterator
 Read or write an unsigned 16 bit value from/to the
 message iterator
 
+
+=cut
+
+sub get_uint16 {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_UINT16);
+}
+
+sub append_uint16 {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_UINT16, int($_[0]));
+}
+
 =item my $val = $iter->get_int32()
 
 =item $iter->append_int32($val);
@@ -151,12 +266,38 @@ message iterator
 Read or write a signed 32 bit value from/to the
 message iterator
 
+
+=cut
+
+sub get_int32 {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_INT32);
+}
+
+sub append_int32 {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_INT32, int($_[0]));
+}
+
 =item my $val = $iter->get_uint32()
 
 =item $iter->append_uint32($val);
 
 Read or write an unsigned 32 bit value from/to the
 message iterator
+
+
+=cut
+
+sub get_uint32 {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_UINT32);
+}
+
+sub append_uint32 {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_UINT32, int($_[0]));
+}
 
 =item my $val = $iter->get_int64()
 
@@ -166,6 +307,19 @@ Read or write a signed 64 bit value from/to the
 message iterator. An error will be raised if this
 build of Perl does not support 64 bit integers
 
+
+=cut
+
+sub get_int64 {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_INT64);
+}
+
+sub append_int64 {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_INT64, int($_[0]));
+}
+
 =item my $val = $iter->get_uint64()
 
 =item $iter->append_uint64($val);
@@ -173,6 +327,19 @@ build of Perl does not support 64 bit integers
 Read or write an unsigned 64 bit value from/to the
 message iterator. An error will be raised if this
 build of Perl does not support 64 bit integers
+
+
+=cut
+
+sub get_uint64 {
+    my $self = shift;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_UINT64);
+}
+
+sub append_uint64 {
+    my $self = shift;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_UINT64, int($_[0]));
+}
 
 =item my $val = $iter->get_double()
 
@@ -183,29 +350,17 @@ from/to the message iterator
 
 =cut
 
-sub get_int64 {
+sub get_double {
     my $self = shift;
-    die "Quads not supported on this platform\n" unless $have_quads;
-    return $self->_get_int64;
+    return $self->_get(&Net::DBus::Binding::Message::TYPE_DOUBLE);
 }
 
-sub get_uint64 {
+sub append_double {
     my $self = shift;
-    die "Quads not supported on this platform\n" unless $have_quads;
-    return $self->_get_uint64;
+    $self->_append(&Net::DBus::Binding::Message::TYPE_DOUBLE, $_[0]);
 }
 
-sub append_int64 {
-    my $self = shift;
-    die "Quads not supported on this platform\n" unless $have_quads;
-    $self->_append_int64(shift);
-}
 
-sub append_uint64 {
-    my $self = shift;
-    die "Quads not supported on this platform\n" unless $have_quads;
-    $self->_append_uint64(shift);
-}
 
 =item my $value = $iter->get()
 
@@ -248,8 +403,6 @@ sub get {
 	$type = $self->get_arg_type;
     }
 
-	
-    
     if ($type == &Net::DBus::Binding::Message::TYPE_STRING) {
 	return $self->get_string;
     } elsif ($type == &Net::DBus::Binding::Message::TYPE_BOOLEAN) {
@@ -591,8 +744,6 @@ sub append_array {
     foreach my $value (@{$array}) {
 	$iter->append($value, $type->[0]);
     }
-
-    $self->_close_container($iter);
 }
 
 
@@ -621,8 +772,6 @@ sub append_struct {
     foreach my $value (@{$struct}) {
 	$iter->append($value, shift @type);
     }
-
-    $self->_close_container($iter);
 }
 
 =item $iter->append_dict($value, $type)
@@ -652,9 +801,7 @@ sub append_dict {
 
 	$entry->append($key, $type->[0]);
 	$entry->append($value, $type->[1]);
-	$iter->_close_container($entry);
     }
-    $self->_close_container($iter);
 }
 
 =item $iter->append_variant($value)
@@ -683,7 +830,6 @@ sub append_variant {
     my $sig = $self->format_signature($type->[0]);
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_VARIANT, $sig);
     $iter->append($value, $type->[0]);
-    $self->_close_container($iter);
 }
 
 
@@ -693,6 +839,18 @@ Retrieves the type code of the value pointing to by this iterator.
 The returned code will correspond to one of the constants
 C<Net::DBus::Binding::Message::TYPE_*>
 
+=cut
+
+sub get_arg_type {
+    my $self = shift;
+    
+    return &Net::DBus::Binding::Message::TYPE_INVALID
+	if $self->{position} > $#{$self->{data}};
+
+    my $data = $self->{data}->[$self->{position}];
+    return $data->[0];
+}
+
 =item my $type = $iter->get_element_type
 
 If the iterator points to an array, retrieves the type code of 
@@ -701,22 +859,100 @@ constants C<Net::DBus::Binding::Message::TYPE_*>
 
 =cut
 
+sub get_element_type {
+    my $self = shift;
+    
+    die "current element is not valid" if $self->{position} > $#{$self->{data}};
+
+    my $data = $self->{data}->[$self->{position}];
+    if ($data->[0] != &Net::DBus::Binding::Message::TYPE_ARRAY) {
+	die "current element is not an array";
+    }
+    return $data->[2];
+}
+
+
+
+sub _recurse {
+    my $self = shift;
+
+    die "_recurse call is not valid for writable iterator" if $self->{append};
+
+    die "current element is not valid" if $self->{position} > $#{$self->{data}};
+
+    my $data = $self->{data}->[$self->{position}];
+
+    my $type = $data->[0];
+    if ($type != &Net::DBus::Binding::Message::TYPE_STRUCT &&
+	$type != &Net::DBus::Binding::Message::TYPE_ARRAY &&
+	$type != &Net::DBus::Binding::Message::TYPE_VARIANT) {
+	die "current data element is not a container";
+    }
+
+    return $self->_new(data => $data->[1],
+		       append => 0);
+}
+
+
+sub _append {
+    my $self = shift;
+    my $type = shift;
+    my $data = shift;
+
+    die "iterator is not open for append" unless $self->{append};
+
+    push @{$self->{data}}, [$type, $data];
+}
+
+
+sub _open_container {
+    my $self = shift;
+    my $type = shift;
+    my $sig = shift;
+
+    my $data = [];
+
+    push @{$self->{data}}, [$type, $data, $sig];
+
+    return $self->_new(data => $data,
+		       append => 1);
+}
+
+
+
+sub _get {
+    my $self = shift;
+    my $type = shift;
+
+    die "iterator is not open for reading" if $self->{append};
+
+    die "current element is not valid" if $self->{position} > $#{$self->{data}};
+
+    my $data = $self->{data}->[$self->{position}];
+
+    die "data type does not match" unless $data->[0] == $type;
+
+    return $data->[1];
+}
+
 1;
 
 =pod
 
 =back
 
+=head1 BUGS
+
+It doesn't completely replicate the API of L<Net::DBus::Binding::Iterator>,
+merely enough to make the high level bindings work in a test scenario.
+
 =head1 SEE ALSO
 
-L<Net::DBus::Binding::Message>
-
-=head1 AUTHOR
-
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+L<Net::DBus::Test::MockMessage>, L<Net::DBus::Binding::Iterator>,
+L<http://www.mockobjects.com/Faq.html>
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright 2006 Daniel Berrange <dan@berrange.com>
 
 =cut

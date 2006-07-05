@@ -2,8 +2,13 @@
 
 use Test::More tests => 93;
 
+use strict;
+use warnings;
+
 package MyObject1;
 
+use strict;
+use warnings;
 use Test::More;
 use base qw(Net::DBus::Object);
 use Net::DBus;

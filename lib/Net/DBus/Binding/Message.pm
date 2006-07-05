@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: Message.pm,v 1.13 2006/02/03 13:30:14 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -146,7 +144,6 @@ package Net::DBus::Binding::Message;
 use 5.006;
 use strict;
 use warnings;
-use Carp;
 
 use Net::DBus::Binding::Iterator;
 use Net::DBus::Binding::Message::Signal;
@@ -170,7 +167,7 @@ sub new {
     my $self = {};
 
     $self->{message} = exists $params{message} ? $params{message} : 
-	(Net::DBus::Binding::Message::_create(exists $params{type} ? $params{type} : confess "type parameter is required"));
+	(Net::DBus::Binding::Message::_create(exists $params{type} ? $params{type} : die "type parameter is required"));
 
     bless $self, $class;
     
@@ -431,10 +428,10 @@ sub AUTOLOAD {
     our $AUTOLOAD;
     ($constname = $AUTOLOAD) =~ s/.*:://;
 
-    croak "&Net::DBus::Binding::Message::constant not defined" if $constname eq '_constant';
+    die "&Net::DBus::Binding::Message::constant not defined" if $constname eq '_constant';
 
     if (!exists $Net::DBus::Binding::Message::_constants{$constname}) {
-        croak "no such constant \$Net::DBus::Binding::Message::$constname";
+        die "no such constant \$Net::DBus::Binding::Message::$constname";
     }
 
     {

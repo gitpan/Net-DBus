@@ -49,7 +49,7 @@ In keeping with the C API, the Perl DBus implementation
 has minimal external dependancies:
 
   Time::HiRes
-  XML::Grove
+  XML::Twig
   XML::Parser
 
 And to run the test suite:
@@ -93,18 +93,18 @@ patch is as follows:
   * Rename your working directory to have '-new' 
     extension: 
 
-        mv DBus-0.33.1 DBus-0.33.1-new
+        mv DBus-0.33.3 DBus-0.33.3-new
 
   * Extract a pristine copy of the source:
 
-        gunzip -c DBus-0.33.1.tar.gz | tar xf -
-        mv DBus-0.33.1 DBus-0.33.1-orig
+        gunzip -c DBus-0.33.3.tar.gz | tar xf -
+        mv DBus-0.33.3 DBus-0.33.3-orig
 
   * Generate the patch:
 
-        diff -ruN DBus-0.33.1-orig DBus-0.33.1-new \
-          > DBus-0.33.1-[something].patch
-        gzip DBus-0.33.1-[something].patch
+        diff -ruN DBus-0.33.3-orig DBus-0.33.3-new \
+          > DBus-0.33.3-[something].patch
+        gzip DBus-0.33.3-[something].patch
 
 
 Send the resulting to .patch.gz file directly to 
@@ -115,7 +115,19 @@ COPYRIGHT AND LICENCE
 
 Copyright (C) 2004-2006 Daniel Berrange
 
-This library is provided under the terms of the GNU GPL 
+Net-DBus may be redistributed and/or modified under the terms of Perl itself.
+Either:
+
+a) the GNU General Public License as published by the Free
+   Software Foundation; either version 1, or (at your option) any
+   later version
+
+or
+
+b) the "Artistic License"
+
+
+See the file "COPYING" for the full text of each license
 
 -- End
 

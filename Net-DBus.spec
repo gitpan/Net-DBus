@@ -12,7 +12,7 @@
 
 Summary: Perl API to the DBus message system
 Name: perl-%{appname}
-Version: 0.33.2
+Version: 0.33.3
 Release: 1%{_extra_release}
 License: GPL
 Group: Applications/Internet
@@ -20,19 +20,17 @@ Source: %{appname}-%{version}.tar.gz
 BuildRoot: /var/tmp/%{appname}-%{version}-root
 #BuildArchitectures: noarch
 Requires: perl = %{perlversion}
-# For XML::Parser::PerlSAX & friends
-Requires: perl-libxml-perl
-Requires: perl-XML-Grove
+# For XML::Twig
+Requires: perl-XML-Twig
 # For Time::HiRes
 Requires: perl-Time-HiRes
 Requires: dbus >= 0.33
 BuildRequires: dbus-devel >= 0.33
-BuildRequires: perl-XML-Grove
-BuildRequires: perl-libxml-perl
+BuildRequires: perl-XML-Twig
 
 %description
 Provides a Perl API to the DBus message system
- 
+
 %prep
 %setup -q -n %{appname}-%{version}
 

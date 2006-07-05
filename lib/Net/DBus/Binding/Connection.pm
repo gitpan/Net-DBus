@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: Connection.pm,v 1.8 2006/01/27 15:34:24 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -74,10 +72,12 @@ package Net::DBus::Binding::Connection;
 use 5.006;
 use strict;
 use warnings;
-use Carp;
 
 use Net::DBus;
+use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Message::MethodReturn;
+use Net::DBus::Binding::Message::Error;
+use Net::DBus::Binding::Message::Signal;
 use Net::DBus::Binding::PendingCall;
 
 =item my $con = Net::DBus::Binding::Connection->new(address => "unix:path=/path/to/socket");
@@ -93,7 +93,7 @@ sub new {
     my %params = @_;
     my $self = {};
 
-    $self->{address} = exists $params{address} ? $params{address} : (exists $params{connection} ? "" : confess "address parameter is required");
+    $self->{address} = exists $params{address} ? $params{address} : (exists $params{connection} ? "" : die "address parameter is required");
     $self->{connection} = exists $params{connection} ? $params{connection} : Net::DBus::Binding::Connection::_open($self->{address});
 
     bless $self, $class;
@@ -178,7 +178,7 @@ any).
 sub send {
     my $self = shift;
     my $msg = shift;
-    
+
     return $self->{connection}->_send($msg->{message});
 }
 
@@ -201,13 +201,11 @@ sub send_with_reply_and_block {
 
     my $type = $reply->dbus_message_get_type;
     if ($type == &Net::DBus::Binding::Message::MESSAGE_TYPE_ERROR) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $msg,
-						       message => $reply);
+	return $self->make_raw_message($reply);
     } elsif ($type == &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN) {
-	return Net::DBus::Binding::Message::MethodReturn->new(call => $msg,
-							      message => $reply);
+	return $self->make_raw_message($reply);
     } else {
-	confess "unknown method reply type $type";
+	die "unknown method reply type $type";
     }
 }
 
@@ -229,7 +227,8 @@ sub send_with_reply {
 
     my $reply = $self->{connection}->_send_with_reply($msg->{message}, $timeout);
 
-    return Net::DBus::Binding::PendingCall->new(method_call => $msg,
+    return Net::DBus::Binding::PendingCall->new(connection => $self,
+						method_call => $msg,
 						pending_call => $reply);
 }
 
@@ -265,7 +264,7 @@ sub borrow_message {
     my $self = shift;
     
     my $msg = $self->{connection}->dbus_connection_borrow_message();
-    return Net::DBus::Binding::Message->new(message => $msg);
+    return $self->make_raw_message($msg);
 }
 
 =item $con->return_message($msg)
@@ -313,7 +312,7 @@ sub pop_message {
     my $self = shift;
     
     my $msg = $self->{connection}->dbus_connection_pop_message();
-    return Net::DBus::Binding::Message->new(message => $msg);
+    return $self->make_raw_message($msg);
 }
 
 =item $con->set_watch_callbacks(\&add_watch, \&remove_watch, \&toggle_watch);
@@ -386,7 +385,7 @@ sub register_object_path {
 	my $con = shift;
 	my $msg = shift;
 
-	&$code($con, Net::DBus::Binding::Message->new(message => $msg));
+	&$code($con, $self->make_raw_message($msg));
     };
     $self->{connection}->_register_object_path($path, $callback);
 }
@@ -426,7 +425,7 @@ sub register_fallback {
 	my $con = shift;
 	my $msg = shift;
 
-	&$code($con, Net::DBus::Binding::Message->new(message => $msg));
+	&$code($con, $self->make_raw_message($msg));
     };
 
     $self->{connection}->_register_fallback($path, $callback);
@@ -518,8 +517,112 @@ sub _message_filter {
     my $rawmsg = shift;
     my $code = shift;
     
-    my $msg = Net::DBus::Binding::Message->new(message => $rawmsg);
+    my $msg = $self->make_raw_message($rawmsg);
     return &$code($self, $msg);
+}
+
+
+=item my $msg = $con->make_raw_message($rawmsg)
+
+Creates a new message, initializing it from the low level C message
+object provided by the C<$rawmsg> parameter. The returned object
+will be cast to the appropriate subclass of L<Net::DBus::Binding::Message>.
+
+=cut
+
+sub make_raw_message {
+    my $self = shift;
+    my $rawmsg = shift;
+    
+    return Net::DBus::Binding::Message->new(message => $rawmsg);
+}
+
+
+=item my $msg = $con->make_error_message(
+      replyto => $method_call, name => $name, description => $description);
+
+Creates a new message, representing an error which occurred during
+the handling of the method call object passed in as the C<replyto>
+parameter. The C<name> parameter is the formal name of the error
+condition, while the C<description> is a short piece of text giving
+more specific information on the error.
+
+=cut
+
+
+sub make_error_message {
+    my $self = shift;
+    my $replyto = shift;
+    my $name = shift;
+    my $description = shift;
+    
+    return Net::DBus::Binding::Message::Error->new(replyto => $replyto,
+						   name => $name,
+						   description => $description);
+}
+
+=item my $call = $con->make_method_call_message(
+  $service_name, $object_path, $interface, $method_name);
+
+Create a message representing a call on the object located at
+the path C<$object_path> within the client owning the well-known
+name given by C<$service_name>. The method to be invoked has
+the name C<$method_name> within the interface specified by the
+C<$interface> parameter.
+
+=cut
+
+
+sub make_method_call_message {
+    my $self = shift;
+    my $service_name = shift;
+    my $object_path = shift;
+    my $interface = shift;
+    my $method_name = shift;
+
+    return Net::DBus::Binding::Message::MethodCall->new(service_name => $service_name,
+							object_path => $object_path,
+							interface => $interface,
+							method_name => $method_name);
+}
+
+=item my $msg = $con->make_method_return_message(
+    replyto => $method_call);
+
+Create a message representing a reply to the method call passed in
+the C<replyto> parameter.
+
+=cut
+
+
+sub make_method_return_message {
+    my $self = shift;
+    my $replyto = shift;
+
+    return Net::DBus::Binding::Message::MethodReturn->new(call => $replyto);
+}
+
+
+=item my $signal = $con->make_signal_message(
+      object_path => $path, interface => $interface, signal_name => $name);
+
+Creates a new message, representing a signal [to be] emitted by
+the object located under the path given by the C<object_path>
+parameter. The name of the signal is given by the C<signal_name>
+parameter, and is scoped to the interface given by the
+C<interface> parameter.
+
+=cut
+
+sub make_signal_message {
+    my $self = shift;
+    my $object_path = shift;
+    my $interface = shift;
+    my $signal_name = shift;
+
+    return Net::DBus::Binding::Message::Signal->new(object_path => $object_path,
+						    interface => $interface,
+						    signal_name => $signal_name);
 }
 
 1;

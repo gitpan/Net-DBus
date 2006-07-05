@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: DBus.pm,v 1.24 2006/01/27 15:34:22 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -47,8 +45,8 @@ Net::DBus - Perl extension for the DBus message system
   my $hal = $bus->get_service("org.freedesktop.Hal");
 
   # Get the device manager
-  my $manager = $hal->get_object("/org/freedesktop/Hal/Manager", 
-                                 "org.freedesktop.Hal.Manager");
+  my $manager = $hal->get_object("/org/freedesktop/Hal/Manager",
+				 "org.freedesktop.Hal.Manager");
 
   # List devices
   foreach my $dev (@{$manager->GetAllDevices}) {
@@ -68,7 +66,7 @@ Net::DBus provides a Perl API for the DBus message system.
 The DBus Perl interface is currently operating against
 the 0.32 development version of DBus, but should work with
 later versions too, providing the API changes have not been
-too drastic. 
+too drastic.
 
 Users of this package are either typically, service providers
 in which case the L<Net::DBus::Service> and L<Net::DBus::Object>
@@ -87,12 +85,9 @@ package Net::DBus;
 use 5.006;
 use strict;
 use warnings;
-use Carp;
-
-
 
 BEGIN {
-    our $VERSION = '0.33.2';
+    our $VERSION = '0.33.3';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -109,19 +104,19 @@ use Exporter qw(import);
 
 use vars qw(@EXPORT_OK %EXPORT_TAGS);
 
-@EXPORT_OK = qw(dbus_int16 dbus_uint16 dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
+@EXPORT_OK = qw(dbus_int16 dbus_uint16 dbus_int32 dbus_uint32 dbus_int64 dbus_uint64
 		dbus_byte dbus_boolean dbus_string dbus_double
-                dbus_object_path dbus_signature
+		dbus_object_path dbus_signature
 		dbus_struct dbus_array dbus_dict dbus_variant);
 
-%EXPORT_TAGS = (typing => [qw(dbus_int16 dbus_uint16 dbus_int32 dbus_uint32 dbus_int64 dbus_uint64 
+%EXPORT_TAGS = (typing => [qw(dbus_int16 dbus_uint16 dbus_int32 dbus_uint32 dbus_int64 dbus_uint64
 			      dbus_byte dbus_boolean dbus_string dbus_double
-                              dbus_object_path dbus_signature
+			      dbus_object_path dbus_signature
 			      dbus_struct dbus_array dbus_dict dbus_variant)]);
 
 =item my $bus = Net::DBus->find(%params);
 
-Search for the most appropriate bus to connect to and 
+Search for the most appropriate bus to connect to and
 return a connection to it. The heuristic used for the
 search is
 
@@ -145,7 +140,7 @@ attached to the main L<Net::DBus::Reactor> event loop.
 
 sub find {
     my $class = shift;
-    
+
     if ($ENV{DBUS_STARTER_BUS_TYPE} &&
 	$ENV{DBUS_STARTER_BUS_TYPE} eq "session") {
 	return $class->session(@_);
@@ -182,7 +177,7 @@ sub system {
 
 =item my $bus = Net::DBus->session(%params);
 
-Return a handle for the session message bus. 
+Return a handle for the session message bus.
 The optional C<params> hash can contain be used to specify
 connection options. The only support option at this time
 is C<nomainloop> which prevents the bus from being automatically
@@ -201,9 +196,9 @@ sub session {
 
 =item my $bus = Net::DBus->test(%params);
 
-Returns a handle for a virtual bus for use in unit tests. This bus does 
+Returns a handle for a virtual bus for use in unit tests. This bus does
 not make any network connections, but rather has an in-memory message
-pipeline. Consult L<Net::DBus::Test::MockConnection> for further details 
+pipeline. Consult L<Net::DBus::Test::MockConnection> for further details
 of how to use this special bus.
 
 =cut
@@ -219,7 +214,7 @@ sub test {
 
 Return a connection to a specific message bus.  The C<$address>
 parameter must contain the address of the message bus to connect
-to. An example address for a session bus might look like 
+to. An example address for a session bus might look like
 C<unix:abstract=/tmp/dbus-PBFyyuUiVb,guid=191e0a43c3efc222e0818be556d67500>,
 while one for a system bus would look like C<unix:/var/run/dbus/system_bus_socket>.
 The optional C<params> hash can contain be used to specify
@@ -238,13 +233,13 @@ sub new {
 sub _new {
     my $class = shift;
     my $self = {};
-    
+
     $self->{connection} = shift;
     $self->{signals} = [];
     $self->{services} = {};
-    
+
     my %params = @_;
-    
+
     bless $self, $class;
 
     unless ($params{nomainloop}) {
@@ -254,12 +249,12 @@ sub _new {
 	}
 	# ... Add support for GLib and POE
     }
-    
+
     $self->get_connection->add_filter(sub { $self->_signal_func(@_) });
 
     # XXX is it ok to fix '1:0' as the owner of this ?
     $self->{bus} = Net::DBus::RemoteService->new($self, ":1.0", "org.freedesktop.DBus");
-    
+
     return $self;
 }
 
@@ -289,7 +284,7 @@ of the L<Net::DBus::RemoteService> class.
 sub get_service {
     my $self = shift;
     my $name = shift;
-    
+
     if ($name eq "org.freedesktop.DBus") {
 	return $self->{bus};
     }
@@ -333,7 +328,7 @@ object is an instance of L<Net::DBus::RemoteObject>
 
 sub get_bus_object {
     my $self = shift;
-    
+
     my $service = $self->get_service("org.freedesktop.DBus");
     return $service->get_object('/org/freedesktop/DBus',
 				'org.freedesktop.DBus');
@@ -349,7 +344,7 @@ the bus.
 
 sub get_unique_name {
     my $self = shift;
-    
+
     return $self->get_connection->get_unique_name
 }
 
@@ -390,7 +385,7 @@ sub _add_signal_receiver {
 
     my $rule = $self->_match_rule($signal_name, $interface, $service, $path);
 
-    push @{$self->{signals}}, [$receiver, $rule, $signal_name, $interface, $service, $path];    
+    push @{$self->{signals}}, [$receiver, $rule, $signal_name, $interface, $service, $path];
     $self->{connection}->add_match($rule);
 }
 
@@ -401,7 +396,7 @@ sub _remove_signal_receiver {
     my $interface = shift;
     my $service = shift;
     my $path = shift;
-    
+
     my $rule = $self->_match_rule($signal_name, $interface, $service, $path);
 
     my @signals;
@@ -455,15 +450,15 @@ sub _rule_matches {
     my $interface = shift;
     my $sender = shift;
     my $path = shift;
-    
+
     my %bits;
-    map { 
+    map {
 	if (/^(\w+)='(.*)'$/) {
 	    $bits{$1} = $2;
 	}
     } split /,/, $rule;
 
-    
+
     if (exists $bits{member} &&
 	$bits{member} ne $member) {
 	return 0;
@@ -488,7 +483,7 @@ sub _signal_func {
     my $connection = shift;
     my $message = shift;
 
-    return 0 unless $message->isa("Net::DBus::Binding::Message::Signal");
+    return 0 unless $message->get_type() == &Net::DBus::Binding::Message::MESSAGE_TYPE_SIGNAL;
 
     my $interface = $message->get_interface;
     my $sender = $message->get_sender;
@@ -496,7 +491,7 @@ sub _signal_func {
     my $member = $message->get_member;
 
     my $handled = 0;
-    foreach my $handler (grep { defined $_->[1] && 
+    foreach my $handler (grep { defined $_->[1] &&
 				$self->_rule_matches($_->[1], $member, $interface, $sender, $path) }
 			 @{$self->{signals}}) {
 	my $callback = $handler->[0];
@@ -529,7 +524,7 @@ Mark a value as being a signed, 16-bit integer.
 sub dbus_int16 {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_INT16,
 					  $_[0]);
-					  
+
 }
 
 =item $typed_value = dbus_uint16($value);
@@ -553,7 +548,7 @@ Mark a value as being a signed, 32-bit integer.
 sub dbus_int32 {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_INT32,
 					  $_[0]);
-					  
+
 }
 
 =item $typed_value = dbus_uint32($value);
@@ -579,7 +574,7 @@ Mark a value as being an unsigned, 64-bit integer.
 sub dbus_int64 {
     return Net::DBus::Binding::Value->new(&Net::DBus::Binding::Message::TYPE_INT64,
 					  $_[0]);
-					  
+
 }
 
 =item $typed_value = dbus_uint64($value);
@@ -637,7 +632,7 @@ sub dbus_string {
 
 =item $typed_value = dbus_signature($value);
 
-Mark a value as being a UTF-8 string, whose contents is a valid 
+Mark a value as being a UTF-8 string, whose contents is a valid
 type signature
 
 =cut
@@ -726,8 +721,8 @@ sub dbus_variant{
 
 =head1 SEE ALSO
 
-L<Net::DBus>, L<Net::DBus::RemoteService>, L<Net::DBus::Service>, 
-L<Net::DBus::RemoteObject>, L<Net::DBus::Object>, 
+L<Net::DBus>, L<Net::DBus::RemoteService>, L<Net::DBus::Service>,
+L<Net::DBus::RemoteObject>, L<Net::DBus::Object>,
 L<Net::DBus::Exporter>, L<Net::DBus::Dumper>, L<Net::DBus::Reactor>,
 C<dbus-monitor(1)>, C<dbus-daemon-1(1)>, C<dbus-send(1)>, L<http://dbus.freedesktop.org>,
 
@@ -742,18 +737,3 @@ Copyright 2004-2005 by Daniel Berrange
 =cut
 
 1;
-
-package Net::DBus::Error;
-
-use overload ('""' => 'stringify');
-
-sub stringify {
-    my $self = shift;
-    
-    return $self->{name} . ": " . $self->{message} . ($self->{message} =~ /\n$/ ? "" : "\n");
-}
-    
-
-1;
-
-

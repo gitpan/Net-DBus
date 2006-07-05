@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: Object.pm,v 1.23 2006/02/03 13:30:14 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -117,7 +115,6 @@ package Net::DBus::Object;
 use 5.006;
 use strict;
 use warnings;
-use Carp;
 
 our $ENABLE_INTROSPECT;
 
@@ -130,8 +127,6 @@ BEGIN {
 }
 
 use Net::DBus::Exporter "org.freedesktop.DBus.Introspectable";
-use Net::DBus::Binding::Message::Error;
-use Net::DBus::Binding::Message::MethodReturn;
 
 dbus_method("Introspect", [], ["string"]);
 
@@ -303,9 +298,11 @@ sub emit_signal_in {
 
     die "object is disconnected from the bus" unless $self->is_connected;
 
-    my $signal = Net::DBus::Binding::Message::Signal->new(object_path => $self->get_object_path,
-							  interface => $interface,
-							  signal_name => $name);
+    my $con = $self->get_service->get_bus->get_connection;
+
+    my $signal = $con->make_signal_message($self->get_object_path,
+					   $interface,
+					   $name);
     if ($destination) {
 	$signal->set_destination($destination);
     }
@@ -316,7 +313,7 @@ sub emit_signal_in {
     } else {
 	$signal->append_args_list(@args);
     }
-    $self->get_service->get_bus->get_connection->send($signal);
+    $con->send($signal);
 
     # Short circuit locally registered callbacks
     if (exists $self->{callbacks}->{$interface} &&
@@ -459,15 +456,15 @@ sub _dispatch {
 	    $self->_introspector &&
 	    $ENABLE_INTROSPECT) {
 	    my $xml = $self->_introspector->format;
-	    $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $message);
+	    $reply = $connection->make_method_return_message($message);
 
 	    $self->_introspector->encode($reply, "methods", $method_name, "returns", $xml);
 	}
     } elsif ($interface eq "org.freedesktop.DBus.Properties") {
 	if ($method_name eq "Get") {
-	    $reply = $self->_dispatch_prop_read($message);
+	    $reply = $self->_dispatch_prop_read($connection, $message);
 	} elsif ($method_name eq "Set") {
-	    $reply = $self->_dispatch_prop_write($message);
+	    $reply = $self->_dispatch_prop_write($connection, $message);
 	}
     } elsif ($self->can($method_name)) {
 	my $ins = $self->_introspector;
@@ -482,11 +479,13 @@ sub _dispatch {
 	    $self->$method_name(@args);
 	};
 	if ($@) {
-	    $reply = Net::DBus::Binding::Message::Error->new(replyto => $message,
-							     name => "org.freedesktop.DBus.Error.Failed",
-							     description => $@);
+	    my $name = UNIVERSAL::isa($@, "Net::DBus::Error") ? $@->name : "org.freedesktop.DBus.Error.Failed";
+	    my $desc = UNIVERSAL::isa($@, "Net::DBus::Error") ? $@->message : $@;
+	    $reply = $connection->make_error_message($message,
+					      $name,
+					      $desc);
 	} else {
-	    $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $message);
+	    $reply = $connection->make_method_return_message($message);
 	    if ($ins) {
 		$self->_introspector->encode($reply, "methods", $method_name, "returns", @ret);
 	    } else {
@@ -496,9 +495,9 @@ sub _dispatch {
     }
 
     if (!$reply) {
-	$reply = Net::DBus::Binding::Message::Error->new(replyto => $message,
-							 name => "org.freedesktop.DBus.Error.Failed",
-							 description => "No such method " . ref($self) . "->" . $method_name);
+	$reply = $connection->make_error_message($message,
+						 "org.freedesktop.DBus.Error.Failed",
+						 "No such method " . ref($self) . "->" . $method_name);
     }
 
     if ($message->get_no_reply()) {
@@ -511,29 +510,29 @@ sub _dispatch {
 
 sub _dispatch_prop_read {
     my $self = shift;
+    my $connection = shift;
     my $message = shift;
-    my $method_name = shift;
 
     my $ins = $self->_introspector;
 
     if (!$ins) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "no introspection data exported for properties");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no introspection data exported for properties");
     }
 
     my ($pinterface, $pname) = $ins->decode($message, "methods", "Get", "params");
 
     if (!$ins->has_property($pname, $pinterface)) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "no property '$pname' exported in interface '$pinterface'");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no property '$pname' exported in interface '$pinterface'");
     }
 
     if (!$ins->is_property_readable($pinterface, $pname)) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "property '$pname' in interface '$pinterface' is not readable");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "property '$pname' in interface '$pinterface' is not readable");
     }
 
     if ($self->can($pname)) {
@@ -541,47 +540,47 @@ sub _dispatch_prop_read {
 	    $self->$pname;
 	};
 	if ($@) {
-	    return Net::DBus::Binding::Message::Error->new(replyto => $message,
-							   name => "org.freedesktop.DBus.Error.Failed",
-							   description => "error reading '$pname' in interface '$pinterface': $@");
+	    return $connection->make_error_message($message,
+						   "org.freedesktop.DBus.Error.Failed",
+						   "error reading '$pname' in interface '$pinterface': $@");
 	} else {
-	    my $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $message);
+	    my $reply = $connection->make_method_return_message($message);
 
 	    $self->_introspector->encode($reply, "methods", "Get", "returns", $value);
 	    return $reply;
 	}
     } else {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "no method to read property '$pname' in interface '$pinterface'");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no method to read property '$pname' in interface '$pinterface'");
     }
 }
 
 sub _dispatch_prop_write {
     my $self = shift;
+    my $connection = shift;
     my $message = shift;
-    my $method_name = shift;
 
     my $ins = $self->_introspector;
 
     if (!$ins) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "no introspection data exported for properties");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no introspection data exported for properties");
     }
 
     my ($pinterface, $pname, $pvalue) = $ins->decode($message, "methods", "Set", "params");
 
     if (!$ins->has_property($pname, $pinterface)) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "no property '$pname' exported in interface '$pinterface'");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no property '$pname' exported in interface '$pinterface'");
     }
 
     if (!$ins->is_property_writable($pinterface, $pname)) {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "property '$pname' in interface '$pinterface' is not writable");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "property '$pname' in interface '$pinterface' is not writable");
     }
 
     if ($self->can($pname)) {
@@ -589,18 +588,19 @@ sub _dispatch_prop_write {
 	    $self->$pname($pvalue);
 	};
 	if ($@) {
-	    return Net::DBus::Binding::Message::Error->new(replyto => $message,
-							   name => "org.freedesktop.DBus.Error.Failed",
-							   description => "error writing '$pname' in interface '$pinterface': $@");
+	    return $connection->make_error_message($message,
+						   "org.freedesktop.DBus.Error.Failed",
+						   "error writing '$pname' in interface '$pinterface': $@");
 	} else {
-	    return Net::DBus::Binding::Message::MethodReturn->new(call => $message);
+	    return $connection->make_method_return_message($message);
 	}
     } else {
-	return Net::DBus::Binding::Message::Error->new(replyto => $message,
-						       name => "org.freedesktop.DBus.Error.Failed",
-						       description => "no method to write property '$pname' in interface '$pinterface'");
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no method to write property '$pname' in interface '$pinterface'");
     }
 }
+
 
 sub _introspector {
     my $self = shift;

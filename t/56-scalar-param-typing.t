@@ -2,6 +2,8 @@
 
 use Test::More tests => 382;
 
+use Carp qw(confess);
+$SIG{__DIE__} = sub { confess $_[0] };
 use strict;
 use warnings;
 

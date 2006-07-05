@@ -1,3 +1,30 @@
+Changes since 0.33.2
+
+ - Fixed parsing of introspection data if there are processing
+   instructions, or other non-data nodes before the root element.
+
+ - Replace use of XML::Grove with XML::Twig when parsing the 
+   introspection XML documents, since the former has not had any
+   updates / bug fixes since 1999(!), and several people have 
+   reported problems using it on Perl 5.8.x 
+
+ - Made all Perl scripts / modules / tests use 'strict' and
+   'warnings' pragmas
+
+ - Turn Net::DBus::Error into fully fledged object which services
+   can sub-class to allow explicit error handling by clients.
+
+ - In _dispatch method of Net::DBus::Object ensure that any 
+   instances of Net::DBus::Error thrown by the method call
+   are explicitly serialized into DBus errors, rather than 
+   a generic 'org.freedesktop.DBus.Failed'.
+
+ - Change re-distribution license from GPL, to GPL / Perl Artistic,
+   matching the terms of Perl itself.
+
+ - Add support for registering a callback on Net::DBus::ASyncReply
+   objects to allow notification of completion for asynchronous
+   method calls
 
 Changes since 0.33.1
 

@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: MockConnection.pm,v 1.5 2006/02/03 13:30:14 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -64,7 +62,11 @@ package Net::DBus::Test::MockConnection;
 use strict;
 use warnings;
 
+use Net::DBus::Test::MockMessage;
+use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Message::MethodReturn;
+use Net::DBus::Binding::Message::Error;
+use Net::DBus::Binding::Message::Signal;
 
 =item my $con = Net::DBus::Test::MockConnection->new()
 
@@ -105,13 +107,13 @@ by the C<dispatch> method.
 sub send {
     my $self = shift;
     my $msg = shift;
-    
-    if ($msg->isa("Net::DBus::Binding::Message::MethodCall")) {
+
+    if ($msg->get_type() == &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_CALL) {
 	$self->_call_method($msg);
-    } elsif ($msg->isa("Net::DBus::Binding::Message::MethodReturn") ||
-	     $msg->isa("Net::DBus::Binding::Message::Error")) {
+    } elsif ($msg->get_type() == &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN ||
+	     $msg->get_type() == &Net::DBus::Binding::Message::MESSAGE_TYPE_ERROR) {
 	push @{$self->{replies}}, $msg;
-    } elsif ($msg->isa("Net::DBus::Binding::Message::Signal")) {
+    } elsif ($msg->get_type() == &Net::DBus::Binding::Message::MESSAGE_TYPE_SIGNAL) {
 	push @{$self->{signals}}, $msg;
     } else {
 	die "unhandled type of message " . ref($msg);
@@ -164,14 +166,13 @@ sub send_with_reply_and_block {
 	die "too many replies received";
     }
 
-    if (ref($reply) eq "Net::DBus::Binding::Message::Error") {
+    if ($reply->get_type() == &Net::DBus::Binding::Message::MESSAGE_TYPE_ERROR) {
 	my $iter = $reply->iterator;
 	my $desc = $iter->get_string;
-	my $err = { name => $reply->get_error_name,
-		    message => $desc };
-	bless $err, "Net::DBus::Error";
-	die $err;
+	die Net::DBus::Error->new(name => $reply->get_error_name,
+				  message => $desc);
     }
+
     return $reply;
 }
 
@@ -320,7 +321,7 @@ sub _call_method {
 	}
 	if ($msg->get_path eq "/org/freedesktop/DBus") {
 	    if ($msg->get_member eq "GetNameOwner") {
-		my $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $msg);
+		my $reply = $self->make_method_return_message($msg);
 		my $iter = $reply->iterator(1);
 		$iter->append(":1.1");
 		$self->send($reply);
@@ -328,6 +329,112 @@ sub _call_method {
 	}
     }
 }
+
+=item my $msg = $con->make_error_message($replyto, $name, $description)
+
+Creates a new message, representing an error which occurred during
+the handling of the method call object passed in as the C<$replyto>
+parameter. The C<$name> parameter is the formal name of the error
+condition, while the C<$description> is a short piece of text giving
+more specific information on the error.
+
+=cut
+
+sub make_error_message {
+    my $self = shift;
+    my $replyto = shift;
+    my $name = shift;
+    my $description = shift;
+
+    if (1) {
+	return Net::DBus::Test::MockMessage->new_error(replyto => $replyto,
+						       error_name => $name,
+						       error_description => $description);
+    } else {
+	return Net::DBus::Binding::Message::Error->new(replyto => $replyto,
+						       name => $name,
+						       description => $description);
+    }
+}
+
+=item my $call = $con->make_method_call_message(
+  $service_name, $object_path, $interface, $method_name);
+
+Create a message representing a call on the object located at
+the path C<$object_path> within the client owning the well-known
+name given by C<$service_name>. The method to be invoked has
+the name C<$method_name> within the interface specified by the
+C<$interface> parameter.
+
+=cut
+
+sub make_method_call_message {
+    my $self = shift;
+    my $service_name = shift;
+    my $object_path = shift;
+    my $interface = shift;
+    my $method_name = shift;
+
+    if (1) {
+	return Net::DBus::Test::MockMessage->new_method_call(destination => $service_name,
+							     path => $object_path,
+							     interface => $interface,
+							     member => $method_name);
+    } else {
+	return Net::DBus::Binding::Message::MethodCall->new(service_name => $service_name,
+							    object_path => $object_path,
+							    interface => $interface,
+							    method_name => $method_name);
+    }
+}
+
+=item my $msg = $con->make_method_return_message($replyto)
+
+Create a message representing a reply to the method call message passed in
+the C<$replyto> parameter.
+
+=cut
+
+
+sub make_method_return_message {
+    my $self = shift;
+    my $replyto = shift;
+
+    if (1) {
+	return Net::DBus::Test::MockMessage->new_method_return(replyto => $replyto);
+    } else {
+	return Net::DBus::Binding::Message::MethodReturn->new(call => $replyto);
+    }
+}
+
+
+=item my $msg = $con->make_signal_message($object_path, $interface, $signal_name);
+
+Creates a new message, representing a signal [to be] emitted by
+the object located under the path given by the C<$object_path>
+parameter. The name of the signal is given by the C<$signal_name>
+parameter, and is scoped to the interface given by the
+C<$interface> parameter.
+
+=cut
+
+sub make_signal_message {
+    my $self = shift;
+    my $object_path = shift;
+    my $interface = shift;
+    my $signal_name = shift;
+
+    if (1) {
+	return Net::DBus::Test::MockMessage->new_signal(object_path => $object_path,
+							interface => $interface,
+							signal_name => $signal_name);
+    } else {
+	return Net::DBus::Binding::Message::Signal->new(object_path => $object_path,
+							interface => $interface,
+							signal_name => $signal_name);
+    }
+}
+
 
 1;
 

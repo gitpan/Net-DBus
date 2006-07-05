@@ -1,5 +1,9 @@
 # -*- perl -*-
 use Test::More tests => 25;
+
+use strict;
+use warnings;
+
 BEGIN { 
         use_ok('Net::DBus::Binding::Iterator');
         use_ok('Net::DBus::Binding::Message::Signal');

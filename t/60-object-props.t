@@ -43,7 +43,7 @@ dbus_property("age", "int32" ,"write");
 package main;
 
 my $bus = Net::DBus->test;
-my $service = $bus->export_service("/org/cpan/Net/Bus/test");
+my $service = $bus->export_service("org.cpan.Net.Bus.test");
 my $object = MyObject->new($service, "/org/example/MyObject");
 
 my $introspector = $object->_introspector;
@@ -95,7 +95,7 @@ GET_NAME: {
 
     my $reply = $bus->get_connection->send_with_reply_and_block($msg);
 
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
     
     my ($value) = $reply->get_args_list;
     is($value, "John Doe", "name is John Doe");
@@ -133,7 +133,7 @@ sub GET_SET_NAME: {
 
     my $reply1 = $bus->get_connection->send_with_reply_and_block($msg1);
 
-    isa_ok($reply1, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply1->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
     
     my ($value1) = $reply1->get_args_list;
     is($value1, "John Doe", "name is John Doe");
@@ -151,12 +151,12 @@ sub GET_SET_NAME: {
 
     my $reply2 = $bus->get_connection->send_with_reply_and_block($msg2);
 
-    isa_ok($reply2, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply2->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
 
 
     my $reply3 = $bus->get_connection->send_with_reply_and_block($msg1);
 
-    isa_ok($reply3, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply3->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
     
     my ($value2) = $reply3->get_args_list;
     is($value2, "Jane Doe", "name is Jane Doe");    
@@ -186,7 +186,7 @@ SET_AGE: {
 
     my $reply1 = $bus->get_connection->send_with_reply_and_block($msg2);
 
-    isa_ok($reply1, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply1->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
 
 
     my $reply2 = eval {
@@ -227,7 +227,7 @@ GET_EMAIL: {
 
     my $reply2 = $bus->get_connection->send_with_reply_and_block($msg1);
 
-    isa_ok($reply2, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply2->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
 
     is($object->age, 21, "age is 21");
 

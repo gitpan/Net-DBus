@@ -1,22 +1,20 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2005 Daniel P. Berrange
+# Copyright (C) 2004-2006 Daniel P. Berrange
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; You can redistribute it and/or modify
+# it under the same terms as Perl itself. Either:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# a) the GNU General Public License as published by the Free
+#   Software Foundation; either version 2, or (at your option) any
+#   later version,
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# or
 #
-# $Id: MockObject.pm,v 1.5 2006/02/03 13:30:14 dan Exp $
+# b) the "Artistic License"
+#
+# The file "COPYING" distributed along with this file provides full
+# details of the terms and conditions of the two licenses.
 
 =pod
 
@@ -81,9 +79,6 @@ package Net::DBus::Test::MockObject;
 
 use strict;
 use warnings;
-
-use Net::DBus::Binding::Message::MethodReturn;
-use Net::DBus::Binding::Message::Error;
 
 =item my $object = Net::DBus::Test::MockObject->new($service, $path, $interface);
 
@@ -235,31 +230,33 @@ sub _dispatch {
     my $interface = $message->get_interface;
     my $method = $message->get_member;
 
+    my $con = $self->get_service->get_bus->get_connection;
+
     if (!exists $self->{actions}->{$method}) {
-	my $error = Net::DBus::Binding::Message::Error->new(replyto => $message,
-							    name => "org.freedesktop.DBus.Failed",
-							    description => "no action seeded for method " . $message->get_member);
-	$self->get_service->get_bus->get_connection->send($error);
+	my $error = $con->make_error_message($message,
+					     "org.freedesktop.DBus.Failed",
+					     "no action seeded for method " . $message->get_member);
+	$con->send($error);
 	return;
     }
     
     my $action;
     if ($interface) {
 	if (!exists $self->{actions}->{$method}->{$interface}) {
-	    my $error = Net::DBus::Binding::Message::Error->new(replyto => $message,
-								name => "org.freedesktop.DBus.Failed",
-								description => "no action with correct interface seeded for method " . $message->get_member);
-	    $self->get_service->get_bus->get_connection->send($error);
+	    my $error = $con->make_error_message($message,
+						 "org.freedesktop.DBus.Failed",
+						 "no action with correct interface seeded for method " . $message->get_member);
+	    $con->send($error);
 	    return;
 	}
 	$action = $self->{actions}->{$method}->{$interface};
     } else {
 	my @interfaces = keys %{$self->{actions}->{$method}};
 	if ($#interfaces > 0) {
-	    my $error = Net::DBus::Binding::Message::Error->new(replyto => $message,
-								name => "org.freedesktop.DBus.Failed",
-								description => "too many actions seeded for method " . $message->get_member);
-	    $self->get_service->get_bus->get_connection->send($error);
+	    my $error = $con->make_error_message($message,
+						 "org.freedesktop.DBus.Failed",
+						 "too many actions seeded for method " . $message->get_member);
+	    $con->send($error);
 	    return;
 	}
 	$action = $self->{actions}->{$method}->{$interfaces[0]};
@@ -278,17 +275,17 @@ sub _dispatch {
     $self->{message} = $message;
     
     if (exists $action->{error}) {
-	my $error = Net::DBus::Binding::Message::Error->new(replyto => $message,
-							    name => $action->{error}->{name},
-							    description => $action->{error}->{description});
-	$self->get_service->get_bus->get_connection->send($error);
+	my $error = $con->make_error_message($message,
+					     $action->{error}->{name},
+					     $action->{error}->{description});
+	$con->send($error);
     } elsif (exists $action->{reply}) {
-	my $reply = Net::DBus::Binding::Message::MethodReturn->new(call => $message);
+	my $reply = $con->make_method_return_message($message);
 	my $iter = $reply->iterator(1);
 	foreach my $value (@{$action->{reply}->{return}}) {
 	    $iter->append($value);
 	}
-	$self->get_service->get_bus->get_connection->send($reply);
+	$con->send($reply);
     }
 }
 

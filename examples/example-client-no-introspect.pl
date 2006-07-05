@@ -1,5 +1,8 @@
 #/usr/bin/perl
 
+use warnings;
+use strict;
+
 use Net::DBus;
 use Carp qw(cluck carp);
 #$SIG{__WARN__} = sub { cluck $_[0] };

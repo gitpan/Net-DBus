@@ -87,8 +87,7 @@ CALLER: {
     $msg->set_sender(":1.1");
 
     my $reply = $bus->get_connection->send_with_reply_and_block($msg);
-
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
     
     is($object->test_get_caller, ":1.1", "caller is :1.1");
 }
@@ -102,7 +101,7 @@ SERIAL: {
 
     my $reply = $bus->get_connection->send_with_reply_and_block($msg);
 
-    isa_ok($reply, "Net::DBus::Binding::Message::MethodReturn");
+    is($reply->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
     
     is($object->test_get_serial, $msg->get_serial, "serial matches");
 }

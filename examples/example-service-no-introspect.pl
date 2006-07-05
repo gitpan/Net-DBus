@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+use warnings;
+use strict;
+
 use Carp qw(confess cluck);
 use Net::DBus;
 use Net::DBus::Service;
