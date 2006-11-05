@@ -62,6 +62,7 @@ package Net::DBus::Test::MockConnection;
 use strict;
 use warnings;
 
+use Net::DBus::Error;
 use Net::DBus::Test::MockMessage;
 use Net::DBus::Binding::Message::MethodCall;
 use Net::DBus::Binding::Message::MethodReturn;

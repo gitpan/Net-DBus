@@ -48,13 +48,9 @@ if [ -f /usr/bin/rpmbuild ]; then
     NOW=`date +"%s"`
     EXTRA_RELEASE=".$USER$NOW"
   fi
-  rpmbuild -ta --define "extra_release $EXTRA_RELEASE" --clean $NAME-*.tar.gz
+  # The --nodeps bit is a nasty hack to force build
+  # against the dbus from autobuild, rather than a
+  # (non-existant) installed RPM 
+  rpmbuild -ta --define "extra_release $EXTRA_RELEASE" --clean $NAME-*.tar.gz --nodeps
 fi
 
-# Skip debian pkg for now
-exit 0
-
-if [ -f /usr/bin/fakeroot ]; then
-  fakeroot debian/rules clean
-  fakeroot debian/rules DESTDIR=$HOME/packages/debian binary
-fi

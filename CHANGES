@@ -1,3 +1,31 @@
+Changes since 0.33.3
+
+ - Fixed service owner used for org.freedesktop.DBus object
+   to make signal handling on the bus work again
+
+ - Pass return value for signal handling callbacks all the
+   way back to DBus
+
+ - Fix multiple problems with marshalling of variant data
+   types
+
+ - Replace use of dbus_connection_disconnect with _close
+   when compiling against dbus >= 0.90
+
+ - Call dbus_connection_unref in the DESTROY method of
+   connection object
+
+ - Fix reference counting in connection & pending call
+   objects
+
+ - Added example of galago desktop notifications
+
+ - Fix test suite errors
+
+ - Added missing import statement
+
+ - Throw Net::DBus::Error if an async call fails
+
 Changes since 0.33.2
 
  - Fixed parsing of introspection data if there are processing

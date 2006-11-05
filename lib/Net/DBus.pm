@@ -87,7 +87,7 @@ use strict;
 use warnings;
 
 BEGIN {
-    our $VERSION = '0.33.3';
+    our $VERSION = '0.33.4';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -250,10 +250,9 @@ sub _new {
 	# ... Add support for GLib and POE
     }
 
-    $self->get_connection->add_filter(sub { $self->_signal_func(@_) });
+    $self->get_connection->add_filter(sub { return $self->_signal_func(@_); });
 
-    # XXX is it ok to fix '1:0' as the owner of this ?
-    $self->{bus} = Net::DBus::RemoteService->new($self, ":1.0", "org.freedesktop.DBus");
+    $self->{bus} = Net::DBus::RemoteService->new($self, "org.freedesktop.DBus", "org.freedesktop.DBus");
 
     return $self;
 }

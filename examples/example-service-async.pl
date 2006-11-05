@@ -35,6 +35,22 @@ sub HelloWorld {
     return ["Hello", " from example-service-async.pl"];
 }
 
+dbus_method("GetDict", [], [["dict", "string", "string"]]);
+sub GetDict {
+    my $self = shift;
+    print "Do get dict\n";
+    sleep 10;
+    return {"first" => "Hello Dict", "second" => " from example-service.pl"};
+}
+
+dbus_method("GetTuple", [], [["struct", "string", "string"]]);
+sub GetTuple {
+    my $self = shift;
+    print "Do get tuple\n";
+    sleep 10;
+    return ["Hello Tuple", " from example-service.pl"];
+}
+
 package main;
 
 my $bus = Net::DBus->session();

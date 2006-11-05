@@ -13,6 +13,7 @@ examples/example-service.pl
 examples/example-signal-emitter.pl
 examples/example-signal-receiver.pl
 examples/lshal.pl
+examples/notification.pl
 lib/Net/DBus.pm
 lib/Net/DBus/Annotation.pm
 lib/Net/DBus/ASyncReply.pm
@@ -48,7 +49,6 @@ lib/Net/DBus/Tutorial/UsingObjects.pod
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
-META.yml
 Net-DBus.spec.PL
 README
 t/00-constants.t
@@ -67,5 +67,7 @@ t/56-scalar-param-typing.t
 t/60-object-props.t
 t/65-object-magic.t
 t/70-errors.t
+t/75-notifications.t
 typemap
 Net-DBus.spec
+META.yml                                 Module meta-data (added by MakeMaker)

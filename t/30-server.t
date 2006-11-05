@@ -4,7 +4,7 @@ use Test::More tests => 11;
 use strict;
 use warnings;
 
-BEGIN { 
+BEGIN {
         use_ok('Net::DBus::Binding::Server');
         use_ok('Net::DBus::Binding::Connection');
         use_ok('Net::DBus::Reactor');
@@ -20,6 +20,7 @@ $reactor->manage($server);
 
 my $incoming;
 $server->set_connection_callback(sub {
+  $server = shift;
   $incoming = shift;
 });
 

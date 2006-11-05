@@ -113,8 +113,8 @@ was successfully advanced, zero otherwise.
 sub next {
     my $self = shift;
 
-    if ($self->{position} < $#{$self->{data}}) {
-	$self->{position}++;
+    $self->{position}++;
+    if ($self->{position} <= $#{$self->{data}}) {
 	return 1;
     }
     return 0;
@@ -456,7 +456,7 @@ and returns the value as a hash reference.
 
 sub get_dict {
     my $self = shift;
-    
+
     my $iter = $self->_recurse();
     my $type = $iter->get_arg_type();
     my $dict = {};
@@ -483,7 +483,7 @@ and returns the value as a array reference.
 sub get_array {
     my $self = shift;
     my $array_type = shift;
-    
+
     my $iter = $self->_recurse();
     my $type = $iter->get_arg_type();
     my $array = [];
@@ -525,7 +525,7 @@ correspond to members of the struct.
 
 sub get_struct {
     my $self = shift;
-    
+
     my $iter = $self->_recurse();
     my $type = $iter->get_arg_type();
     my $struct = [];
@@ -843,7 +843,7 @@ C<Net::DBus::Binding::Message::TYPE_*>
 
 sub get_arg_type {
     my $self = shift;
-    
+
     return &Net::DBus::Binding::Message::TYPE_INVALID
 	if $self->{position} > $#{$self->{data}};
 
@@ -868,7 +868,7 @@ sub get_element_type {
     if ($data->[0] != &Net::DBus::Binding::Message::TYPE_ARRAY) {
 	die "current element is not an array";
     }
-    return $data->[2];
+    return $data->[1]->[0]->[0];
 }
 
 
@@ -885,8 +885,9 @@ sub _recurse {
     my $type = $data->[0];
     if ($type != &Net::DBus::Binding::Message::TYPE_STRUCT &&
 	$type != &Net::DBus::Binding::Message::TYPE_ARRAY &&
+	$type != &Net::DBus::Binding::Message::TYPE_DICT_ENTRY &&
 	$type != &Net::DBus::Binding::Message::TYPE_VARIANT) {
-	die "current data element is not a container";
+	die "current data element '$type' is not a container";
     }
 
     return $self->_new(data => $data->[1],
