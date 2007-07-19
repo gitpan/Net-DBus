@@ -1,3 +1,26 @@
+
+Changes since 0.33.4
+
+ - Added support for getting private bus connections for apps which
+   don't want to deal with a shared bus
+
+ - Fix test case to use a private connection
+
+ - On Perl builds where integers are 32-bits, the DBus 64 bit integer
+   types will be serialized to/from the Perl String type instead of
+   calling 'die'.
+
+ - Fix signature when marshalling dicts on newer DBus builds
+
+ - Fix calling of disconnect wrt to newer DBus semantics
+
+ - Make introspection much more tolerant of missing information
+   about methods/properties/signals.
+
+ - Fix use of magic values & added tests
+
+ - Export the Net::DBus::Dumper methods correctly.
+
 Changes since 0.33.3
 
  - Fixed service owner used for org.freedesktop.DBus object

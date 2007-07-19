@@ -1,5 +1,5 @@
 # -*- perl -*-
-use Test::More tests => 25;
+use Test::More tests => 33;
 
 use strict;
 use warnings;
@@ -24,15 +24,17 @@ $iter->append_int16(123);
 $iter->append_uint16(456);
 $iter->append_int32(123);
 $iter->append_uint32(456);
-if ($Net::DBus::Binding::Iterator::have_quads) {
-  $iter->append_int64(12345645645);
-  $iter->append_uint64(12312312312);
-} else {
-  $iter->append_boolean(1);
-  $iter->append_boolean(1);
-}
+$iter->append_int64("12345645645");
+$iter->append_uint64("12312312312");
+$iter->append_int64("12345645645123456");
+$iter->append_uint64("12312312312123456");
 $iter->append_string("Hello world");
 $iter->append_double(1.424141);
+
+$iter->append_array(["one", "two", "three"], [&Net::DBus::Binding::Message::TYPE_STRING]);
+
+$iter->append_dict({ "one" => "foo", "two" => "bar"}, [&Net::DBus::Binding::Message::TYPE_STRING,
+						       &Net::DBus::Binding::Message::TYPE_STRING]);
 
 $iter = $msg->iterator();
 ok($iter->get_boolean() == 1, "boolean");
@@ -50,20 +52,25 @@ ok($iter->next(), "next");
 ok($iter->get_uint32() == 456, "uint32");
 ok($iter->next(), "next");
 
-if (!$Net::DBus::Binding::Iterator::have_quads) {
-  ok(1, "int64 skipped");
-  ok($iter->next(), "next");
-  ok(1, "uint64 skipped");
-  ok($iter->next(), "next");
-} else {
-  ok($iter->get_int64() == 12345645645, "int64");
-  ok($iter->next(), "next");
-  ok($iter->get_uint64() == 12312312312, "uint64");
-  ok($iter->next(), "next");
-}
+ok($iter->get_int64() == "12345645645", "int64");
+ok($iter->next(), "next");
+ok($iter->get_uint64() == "12312312312", "uint64");
+ok($iter->next(), "next");
+
+ok($iter->get_int64() == "12345645645123456", "int64");
+ok($iter->next(), "next");
+ok($iter->get_uint64() == "12312312312123456", "uint64");
+ok($iter->next(), "next");
 
 ok($iter->get_string() eq "Hello world", "string");
 ok($iter->next(), "next");
 ok($iter->get_double() == 1.424141, "double");
+
+ok($iter->next(), "next");
+is_deeply($iter->get_array(&Net::DBus::Binding::Message::TYPE_STRING), ["one", "two", "three"], "array");
+
+ok($iter->next(), "next");
+is_deeply($iter->get_dict(), {"one" => "foo", "two" => "bar"}, "dict");
+
 ok(!$iter->next(), "next");
 

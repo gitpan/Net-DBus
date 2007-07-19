@@ -24,7 +24,8 @@ $server->set_connection_callback(sub {
   $incoming = shift;
 });
 
-my $client = Net::DBus::Binding::Connection->new(address => "unix:path=/tmp/dbus-perl-test-$$");
+my $client = Net::DBus::Binding::Connection->new(address => "unix:path=/tmp/dbus-perl-test-$$",
+						 private => 1);
 ok ($client->is_connected, "client connected");
 $reactor->manage($client);
 

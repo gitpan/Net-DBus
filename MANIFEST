@@ -8,6 +8,7 @@ examples/example-client-async.pl
 examples/example-client-no-introspect.pl
 examples/example-client.pl
 examples/example-service-async.pl
+examples/example-service-magic.pl
 examples/example-service-no-introspect.pl
 examples/example-service.pl
 examples/example-signal-emitter.pl

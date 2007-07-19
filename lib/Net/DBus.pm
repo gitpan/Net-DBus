@@ -87,7 +87,7 @@ use strict;
 use warnings;
 
 BEGIN {
-    our $VERSION = '0.33.4';
+    our $VERSION = '0.33.5';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -169,6 +169,11 @@ attached to the main L<Net::DBus::Reactor> event loop.
 
 sub system {
     my $class = shift;
+    my %params = @_;
+    if ($params{private}) {
+	return $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SYSTEM, private => 1), @_);
+    }
+
     unless ($bus_system) {
 	$bus_system = $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SYSTEM), @_);
     }
@@ -187,6 +192,11 @@ attached to the main L<Net::DBus::Reactor> event loop.
 
 sub session {
     my $class = shift;
+    my %params = @_;
+    if ($params{private}) {
+	return $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SESSION, private => 1), @_);
+    }
+
     unless ($bus_session) {
 	$bus_session = $class->_new(Net::DBus::Binding::Bus->new(type => &Net::DBus::Binding::Bus::SESSION), @_);
     }
@@ -244,7 +254,7 @@ sub _new {
 
     unless ($params{nomainloop}) {
 	if (exists $INC{'Net/DBus/Reactor.pm'}) {
-	    my $reactor = Net::DBus::Reactor->main;
+	    my $reactor = $params{reactor} ? $params{reactor} : Net::DBus::Reactor->main;
 	    $reactor->manage($self->get_connection);
 	}
 	# ... Add support for GLib and POE
