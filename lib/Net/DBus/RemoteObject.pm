@@ -28,7 +28,7 @@ Net::DBus::RemoteObject - Access objects provided on the bus
   my $object = $service->get_object("/org/freedesktop/DBus");
 
   print "Names on the bus {\n";
-  foreach my $name (sort $object->ListNames) {
+  foreach my $name (sort @{$object->ListNames}) {
       print "  ", $name, "\n";
   }
   print "}\n";

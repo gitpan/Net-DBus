@@ -107,6 +107,11 @@ sub new {
 }
 
 
+sub _get_sub_nodes {
+    my $self = shift;
+    return [];
+}
+
 =item my $service = $object->get_service
 
 Retrieves the L<Net::DBus::Service> object within which this

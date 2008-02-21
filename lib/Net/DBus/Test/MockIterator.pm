@@ -563,14 +563,17 @@ sub append {
     my $value = shift;
     my $type = shift;
 
-    if (ref($value) eq "Net::DBus::Binding::Value") {
+    if (ref($value) eq "Net::DBus::Binding::Value" &&
+        ((! defined ref($type)) ||
+	 (ref($type) ne "ARRAY") ||
+	 $type->[0] != &Net::DBus::Binding::Message::TYPE_VARIANT)) {
 	$type = $value->type;
 	$value = $value->value;
     }
 
     if (!defined $type) {
 	$type = $self->guess_type($value);
-    }	
+    }
 
     if (ref($type) eq "ARRAY") {
 	my $maintype = $type->[0];

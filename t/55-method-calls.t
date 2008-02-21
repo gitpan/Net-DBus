@@ -65,10 +65,10 @@ TEST_FULL_INTROSPECT: {
     my ($bus, $object, $robject, $myobject, $otherobject) = &setup;
 
     my $ins = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
-    $ins->add_method("Test", [], ["string"], "org.example.MyObject");
-    $ins->add_method("PolyTest", [], ["string"], "org.example.MyObject");
-    $ins->add_method("PolyTest", [], ["string"], "org.example.OtherObject");
-    $ins->add_method("Deprecated", [], ["string"], "org.example.MyObject", { deprecated => 1 });
+    $ins->add_method("Test", [], ["string"], "org.example.MyObject", {}, []);
+    $ins->add_method("PolyTest", [], ["string"], "org.example.MyObject", {}, []);
+    $ins->add_method("PolyTest", [], ["string"], "org.example.OtherObject", {}, []);
+    $ins->add_method("Deprecated", [], ["string"], "org.example.MyObject", { deprecated => 1 }, []);
     $object->seed_action("org.freedesktop.DBus.Introspectable", "Introspect", 
 			 reply => { return => [ $ins->format ] });
     

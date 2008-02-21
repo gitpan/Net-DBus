@@ -31,7 +31,7 @@ sub new {
     return $self;
 }
 
-dbus_method("HelloWorld", ["string"], [["array", "string"]]);
+dbus_method("HelloWorld", ["string"], [["array", "string"]], { param_names => ["message"], return_names => ["reply"] });
 sub HelloWorld {
     my $self = shift;
     my $message = shift;

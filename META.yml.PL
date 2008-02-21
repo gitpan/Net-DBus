@@ -1,7 +1,33 @@
+# Copyright (C) 2008 Daniel Berrange <dan@berrange.com>
+
+use strict;
+use warnings;
+
+die unless (scalar @ARGV == 1);
+
+open SRC, "lib/Net/DBus.pm"
+    or die "lib/Net/DBus.pm: $!";
+
+our $VERSION;
+while (<SRC>) {
+    if (/\$VERSION\s*=\s*'(.*)'/) {
+	$VERSION=$1;
+    }
+}
+close SRC;
+
+local $/ = undef;
+$_ = <DATA>;
+s/\@VERSION\@/$VERSION/g;
+
+open SPEC, ">$ARGV[0]" or die "$!";
+print SPEC $_;
+close SPEC;
+__DATA__
 --- #YAML:1.0
 name:         Net-DBus
 abstract:     Extension for the DBus bindings
-version:      0.33.6
+version:      @VERSION@
 author:
   - Daniel P. Berrange <dan@berrange.com>
 license: gpl

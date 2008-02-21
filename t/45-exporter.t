@@ -36,7 +36,7 @@ dbus_method("EverythingInterfaceNegativeAnnotate", ["string"], ["int32"], "org.e
 
 # Now test 'defaults'
 dbus_method("NoArgsReturns");
-dbus_method("NoReturns", ["string"]);
+dbus_method("NoReturns", ["string"], [], { param_names => ["wizz"] });
 dbus_method("NoArgs",[],["int32"]);
 dbus_method("NoArgsReturnsInterface", "org.example.OtherObject");
 dbus_method("NoReturnsInterface", ["string"], "org.example.OtherObject");
@@ -46,16 +46,112 @@ dbus_method("NoArgsReturnsAnnotate", { deprecated => 1 });
 dbus_method("NoReturnsAnnotate", ["string"], { deprecated => 1 });
 dbus_method("NoArgsAnnotate",[],["int32"], { deprecated => 1 });
 dbus_method("NoArgsReturnsInterfaceAnnotate", "org.example.OtherObject", { deprecated => 1 });
-dbus_method("NoReturnsInterfaceAnnotate", ["string"], "org.example.OtherObject", { deprecated => 1 });
-dbus_method("NoArgsInterfaceAnnotate", [],["int32"], "org.example.OtherObject", { deprecated => 1 });
+dbus_method("NoReturnsInterfaceAnnotate", ["string"], "org.example.OtherObject", { deprecated => 1, param_names => ["one"] });
+dbus_method("NoArgsInterfaceAnnotate", [],["int32"], "org.example.OtherObject", { deprecated => 1, return_names => ["two"] });
 
 
 
-my $ins = Net::DBus::Exporter::_dbus_introspector($obj);
+my $ins = Net::DBus::Exporter::_dbus_introspector(ref($obj));
 
-is($ins->get_object_path, "/org/example/MyObject", "object path");
 ok($ins->has_interface("org.example.MyObject"), "interface registration");
 ok(!$ins->has_interface("org.example.BogusObject"), "-ve interface registration");
+
+my $wantxml = <<EOF;
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/example/MyObject">
+  <interface name="org.example.MyObject">
+    <method name="Everything">
+      <arg type="s" direction="in"/>
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="EverythingAnnotate">
+      <arg type="s" direction="in"/>
+      <arg type="i" direction="out"/>
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="EverythingNegativeAnnotate">
+      <arg type="s" direction="in"/>
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="NoArgs">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="NoArgsAnnotate">
+      <arg type="i" direction="out"/>
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+    </method>
+    <method name="NoArgsReturns">
+    </method>
+    <method name="NoArgsReturnsAnnotate">
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+    </method>
+    <method name="NoReturns">
+      <arg name="wizz" type="s" direction="in"/>
+    </method>
+    <method name="NoReturnsAnnotate">
+      <arg type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+    </method>
+  </interface>
+  <interface name="org.example.OtherObject">
+    <method name="EverythingInterface">
+      <arg type="s" direction="in"/>
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="EverythingInterfaceAnnotate">
+      <arg type="s" direction="in"/>
+      <arg type="i" direction="out"/>
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="EverythingInterfaceNegativeAnnotate">
+      <arg type="s" direction="in"/>
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="NoArgsInterface">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="NoArgsInterfaceAnnotate">
+      <arg name="two" type="i" direction="out"/>
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+    </method>
+    <method name="NoArgsReturnsInterface">
+    </method>
+    <method name="NoArgsReturnsInterfaceAnnotate">
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+    </method>
+    <method name="NoReturnsInterface">
+      <arg type="s" direction="in"/>
+    </method>
+    <method name="NoReturnsInterfaceAnnotate">
+      <arg name="one" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg type="s" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Properties">
+    <method name="Get">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="v" direction="out"/>
+    </method>
+    <method name="Set">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="v" direction="in"/>
+    </method>
+  </interface>
+</node>
+EOF
+
+is ($ins->format($obj), $wantxml, "xml matches");
+
 
 &check_method($ins, "Everything", ["string"], ["int32"], "org.example.MyObject", 0, 0);
 &check_method($ins, "EverythingInterface", ["string"], ["int32"], "org.example.OtherObject", 0, 0);

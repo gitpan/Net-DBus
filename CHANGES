@@ -1,3 +1,20 @@
+Changes since 0.33.5
+
+ - Fix introspection XML handling when exporting objects with child
+   objects
+
+ - Improve output of Net::DBus::Dumper
+
+ - Add support for providing parameter & return value names in
+   introspection XML
+
+ - Fixes to marshalling of variants
+
+ - Fix handling of compound data types within object properties
+
+ - Remove non-portable makefile rules
+
+ - Fix ref counting bugs in error path.
 
 Changes since 0.33.4
 

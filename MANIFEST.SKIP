@@ -14,3 +14,4 @@ CVS
 .hg
 ^Makefile$
 ^cover_db/
+Net-DBus-.*.tar.gz

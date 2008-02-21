@@ -704,17 +704,17 @@ TEST_MANUAL_TYPING: {
 TEST_INTROSPECT_TYPING: {
     my ($bus, $object, $robject, $myobject, $otherobject) = &setup;
 
-    my $ins = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
-    $ins->add_method("ScalarString", ["string"], [], "org.example.MyObject");
-    $ins->add_method("ScalarInt16", ["int16"], [], "org.example.MyObject");
-    $ins->add_method("ScalarUInt16", ["uint16"], [], "org.example.MyObject");
-    $ins->add_method("ScalarInt32", ["int32"], [], "org.example.MyObject");
-    $ins->add_method("ScalarUInt32", ["uint32"], [], "org.example.MyObject");
-    $ins->add_method("ScalarDouble", ["double"], [], "org.example.MyObject");
-    $ins->add_method("ScalarByte", ["byte"], [], "org.example.MyObject");
-    $ins->add_method("ScalarBoolean", ["bool"], [], "org.example.MyObject");
+    my $ins = Net::DBus::Binding::Introspector->new();
+    $ins->add_method("ScalarString", ["string"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarInt16", ["int16"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarUInt16", ["uint16"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarInt32", ["int32"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarUInt32", ["uint32"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarDouble", ["double"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarByte", ["byte"], [], "org.example.MyObject", {}, []);
+    $ins->add_method("ScalarBoolean", ["bool"], [], "org.example.MyObject", {}, []);
     $object->seed_action("org.freedesktop.DBus.Introspectable", "Introspect", 
-			 reply => { return => [ $ins->format ] });
+			 reply => { return => [ $ins->format($object) ] });
     
     ##### String tests
     

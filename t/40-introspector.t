@@ -18,10 +18,14 @@ TEST_ONE: {
 								"hello" => {
 								    params => ["int32", "int32", ["struct", "int32","byte"]],
 								    returns => ["int32"],
+								    paramnames => ["wibble", "eek"],
+								    returnnames => ["frob"],
 								},
 								"goodbye" => {
 								    params => [["array", ["struct", "int32", "string"]]],
 								    returns => ["string", "string"],
+								    paramnames => ["ooh"],
+								    returnnames => ["ahh", "eek"],
 								},
 							    },
 							    signals => {
@@ -33,6 +37,7 @@ TEST_ONE: {
 								"name" => { type => "string", access => "readwrite"},
 								"email" => { type => "string", access => "read"},
 								"age" => { type => "int32", access => "read"},
+								"parents" => { type => ["array", "string"], access => "readwrite" },
 							    },
 							}
 						    });
@@ -47,15 +52,15 @@ TEST_ONE: {
 <node name="org.example.Object.OtherObject">
   <interface name="org.example.SomeInterface">
     <method name="goodbye">
-      <arg type="a(is)" direction="in"/>
-      <arg type="s" direction="out"/>
-      <arg type="s" direction="out"/>
+      <arg name="ooh" type="a(is)" direction="in"/>
+      <arg name="ahh" type="s" direction="out"/>
+      <arg name="eek" type="s" direction="out"/>
     </method>
     <method name="hello">
-      <arg type="i" direction="in"/>
-      <arg type="i" direction="in"/>
+      <arg name="wibble" type="i" direction="in"/>
+      <arg name="eek" type="i" direction="in"/>
       <arg type="(iy)" direction="in"/>
-      <arg type="i" direction="out"/>
+      <arg name="frob" type="i" direction="out"/>
     </method>
     <signal name="meltdown">
       <arg type="i"/>
@@ -64,6 +69,7 @@ TEST_ONE: {
     <property name="age" type="i" access="read"/>
     <property name="email" type="s" access="read"/>
     <property name="name" type="s" access="readwrite"/>
+    <property name="parents" type="as" access="readwrite"/>
   </interface>
 </node>
 EOF
@@ -77,29 +83,36 @@ EOF
 							  "hello" => {
 							      params => ["int32", "int32", ["struct", "int32","byte"]],
 							      returns => ["uint32"],
+							      paramnames => [],
+							      returnnames => [],
 							  },
 							  "goodbye" => {
 							      params => [["array", ["dict", "int32", "string"]]],
 							      returns => ["string", ["array", "string"]],
+							      paramnames => [],
+							      returnnames => [],
 							  },
 						      },
 						      signals => {
 							  "meltdown" => {
 							      params => ["int32", "byte"],
+							      paramnames => [],
 							  }
 						      },
 						  },
 						  "org.example.OtherInterface" => {
-						     methods => {
-							 "hitme" => {
-							     params => ["int32", "uint32"],
-							     return => [],
-							 }
-						     },
-						     props => {
-							 "title" => { type => "string", access => "readwrite"},
-							 "salary" => { type => "int32", access => "read"},
-						     },
+						      methods => {
+							  "hitme" => {
+							      params => ["int32", "uint32"],
+							      return => [],
+							      paramnames => [],
+							      returnnames => [],
+							  }
+						      },
+						      props => {
+							  "title" => { type => "string", access => "readwrite"},
+							  "salary" => { type => "int32", access => "read"},
+						      },
 						 },
 					      },
 					      children => [
@@ -144,15 +157,15 @@ EOF
   <node name="org.example.Object.OtherObject">
     <interface name="org.example.SomeInterface">
       <method name="goodbye">
-        <arg type="a(is)" direction="in"/>
-        <arg type="s" direction="out"/>
-        <arg type="s" direction="out"/>
+        <arg name="ooh" type="a(is)" direction="in"/>
+        <arg name="ahh" type="s" direction="out"/>
+        <arg name="eek" type="s" direction="out"/>
       </method>
       <method name="hello">
-        <arg type="i" direction="in"/>
-        <arg type="i" direction="in"/>
+        <arg name="wibble" type="i" direction="in"/>
+        <arg name="eek" type="i" direction="in"/>
         <arg type="(iy)" direction="in"/>
-        <arg type="i" direction="out"/>
+        <arg name="frob" type="i" direction="out"/>
       </method>
       <signal name="meltdown">
         <arg type="i"/>
@@ -161,6 +174,7 @@ EOF
       <property name="age" type="i" access="read"/>
       <property name="email" type="s" access="read"/>
       <property name="name" type="s" access="readwrite"/>
+      <property name="parents" type="as" access="readwrite"/>
     </interface>
   </node>
 </node>

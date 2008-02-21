@@ -144,14 +144,15 @@ sub new {
 	$self->{object_path} = exists $params{object_path} ? $params{object_path} : undef;
 	$self->_parse_node($params{node});
     } else {
-	$self->{object_path} = exists $params{object_path} ? $params{object_path} : die "object_path parameter is required";
+	$self->{object_path} = exists $params{object_path} ? $params{object_path} : undef;
 	$self->{interfaces} = $params{interfaces} if exists $params{interfaces};
 	$self->{children} = exists $params{children} ? $params{children} : [];
     }
 
     # Some versions of dbus failed to include signals in introspection data
     # so this code adds them, letting us keep compatability with old versions
-    if ($self->{object_path} eq "/org/freedesktop/DBus") {
+    if (defined $self->{object_path} &&
+	$self->{object_path} eq "/org/freedesktop/DBus") {
 	if (!$self->has_signal("NameOwnerChanged")) {
 	    $self->add_signal("NameOwnerChanged", ["string","string","string"], "org.freedesktop.DBus");
 	}
@@ -265,13 +266,14 @@ sub has_property {
     }
 }
 
-=item $ins->add_method($name, $params, $returns, $interface, $attributes);
+=item $ins->add_method($name, $params, $returns, $interface, $attributes, $paramnames, $returnnames);
 
 Register the object as providing a method called C<$name> accepting parameters
 whose types are declared by C<$params> and returning values whose type
 are declared by C<$returns>. The method will be scoped to the inteface
 named by C<$interface>. The C<$attributes> parameter is a hash reference
-for annotating the method.
+for annotating the method. The C<$paramnames> and C<$returnames> parameters
+are a list of argument and return value names.
 
 =cut
 
@@ -282,11 +284,15 @@ sub add_method {
     my $returns = shift;
     my $interface = shift;
     my $attributes = shift;
+    my $paramnames = shift;
+    my $returnnames = shift;
 
     $self->add_interface($interface);
     $self->{interfaces}->{$interface}->{methods}->{$name} = {
 	params => $params,
 	returns => $returns,
+	paramnames => $paramnames,
+	returnnames => $returnnames,
 	deprecated => $attributes->{deprecated} ? 1 : 0,
 	no_reply => $attributes->{no_return} ? 1 : 0,
     };
@@ -307,10 +313,12 @@ sub add_signal {
     my $params = shift;
     my $interface = shift;
     my $attributes = shift;
+    my $paramnames = shift;
 
     $self->add_interface($interface);
     $self->{interfaces}->{$interface}->{signals}->{$name} = {
 	params => $params,
+	paramnames => $paramnames,
 	deprecated => $attributes->{deprecated} ? 1 : 0,
     };
 }
@@ -503,6 +511,20 @@ sub get_method_params {
     return @{$self->{interfaces}->{$interface}->{methods}->{$method}->{params}};
 }
 
+=item my @types = $ins->get_method_param_names($interface, $name)
+
+Returns a list of declared names for parameters of the
+method called C<$name> within the interface C<$interface>.
+
+=cut
+
+sub get_method_param_names {
+    my $self = shift;
+    my $interface = shift;
+    my $method = shift;
+    return @{$self->{interfaces}->{$interface}->{methods}->{$method}->{paramnames}};
+}
+
 =item my @types = $ins->get_method_returns($interface, $name)
 
 Returns a list of declared data types for return values of the
@@ -517,6 +539,20 @@ sub get_method_returns {
     return @{$self->{interfaces}->{$interface}->{methods}->{$method}->{returns}};
 }
 
+=item my @types = $ins->get_method_return_names($interface, $name)
+
+Returns a list of declared names for return values of the
+method called C<$name> within the interface C<$interface>.
+
+=cut
+
+sub get_method_return_names {
+    my $self = shift;
+    my $interface = shift;
+    my $method = shift;
+    return @{$self->{interfaces}->{$interface}->{methods}->{$method}->{returnnames}};
+}
+
 =item my @types = $ins->get_signal_params($interface, $name)
 
 Returns a list of declared data types for values associated with the
@@ -529,6 +565,20 @@ sub get_signal_params {
     my $interface = shift;
     my $signal = shift;
     return @{$self->{interfaces}->{$interface}->{signals}->{$signal}->{params}};
+}
+
+=item my @types = $ins->get_signal_param_names($interface, $name)
+
+Returns a list of declared names for values associated with the
+signal called C<$name> within the interface C<$interface>.
+
+=cut
+
+sub get_signal_param_names {
+    my $self = shift;
+    my $interface = shift;
+    my $signal = shift;
+    return @{$self->{interfaces}->{$interface}->{signals}->{$signal}->{paramnames}};
 }
 
 =item my $type = $ins->get_property_type($interface, $name)
@@ -634,18 +684,23 @@ sub _parse_method {
     my $name = $node->att("name");
     my @params;
     my @returns;
+    my @paramnames;
+    my @returnnames;
     my $deprecated = 0;
     my $no_reply = 0;
     foreach my $child ($node->children("arg")) {
 	my $type = $child->att("type");
 	my $direction = $child->att("direction");
+	my $name = $child->att("name");
 
 	my @sig = split //, $type;
 	my @type = $self->_parse_type(\@sig);
 	if (!defined $direction || $direction eq "in") {
 	    push @params, @type;
+	    push @paramnames, $name;
 	} elsif ($direction eq "out") {
 	    push @returns, @type;
+	    push @returnnames, $name;
 	}
     }
     foreach my $child ($node->children("annotation")) {
@@ -664,6 +719,8 @@ sub _parse_method {
 	returns => \@returns,
 	no_reply => $no_reply,
 	deprecated => $deprecated,
+	paramnames => \@paramnames,
+	returnnames => \@returnnames,
     }
 }
 
@@ -730,12 +787,15 @@ sub _parse_signal {
 
     my $name = $node->att("name");
     my @params;
+    my @paramnames;
     my $deprecated = 0;
     foreach my $child ($node->children("arg")) {
 	my $type = $child->att("type");
+	my $name = $child->att("name");
 	my @sig = split //, $type;
 	my @type = $self->_parse_type(\@sig);
 	push @params, @type;
+	push @paramnames, $name;
     }
     foreach my $child ($node->children("annotation")) {
 	my $name = $child->att("name");
@@ -748,6 +808,7 @@ sub _parse_signal {
 
     $self->{interfaces}->{$interface}->{signals}->{$name} = {
 	params => \@params,
+	paramnames => \@paramnames,
 	deprecated => $deprecated,
     };
 }
@@ -769,27 +830,31 @@ sub _parse_property {
 	    $deprecated = 1 if lc($value) eq "true";
 	}
     }
+    my @sig = split //, $node->att("type");
     $self->{interfaces}->{$interface}->{props}->{$name} = {
-	type =>  $self->_parse_type([$node->att("type")]),
+	type =>  $self->_parse_type(\@sig),
 	access => $access,
 	deprecated => $deprecated,
     };
 }
 
-=item my $xml = $ins->format
+=item my $xml = $ins->format([$obj])
 
 Return a string containing an XML document representing the
-state of the introspection data.
+state of the introspection data. The optional C<$obj> parameter
+can be an instance of L<Net::DBus::Object> to include object
+specific information in the XML (eg child nodes).
 
 =cut
 
 sub format {
     my $self = shift;
+    my $obj = shift;
 
     my $xml = '<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"' . "\n";
     $xml .= '"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">' . "\n";
 
-    return $xml . $self->to_xml("");
+    return $xml . $self->to_xml("", $obj);
 }
 
 =item my $xml_fragment = $ins->to_xml
@@ -804,9 +869,14 @@ declaration.
 sub to_xml {
     my $self = shift;
     my $indent = shift;
+    my $obj = shift;
 
     my $xml = '';
-    $xml .= $indent . '<node name="' . $self->{object_path} . '">' . "\n";
+    my $path = $obj ? $obj->get_object_path : $self->{object_path};
+    unless (defined $path) {
+	die "no object_path for introspector, and no object supplied";
+    }
+    $xml .= $indent . '<node name="' . $path . '">' . "\n";
 
     foreach my $name (sort { $a cmp $b } keys %{$self->{interfaces}}) {
 	my $interface = $self->{interfaces}->{$name};
@@ -815,14 +885,19 @@ sub to_xml {
 	    my $method = $interface->{methods}->{$mname};
 	    $xml .= $indent . '    <method name="' . $mname . '">' . "\n";
 
+	    my @paramnames = map{ $_ ? "name=\"$_\" " : '' } ( @{$method->{paramnames}} );
+	    my @returnnames = map{ $_ ? "name=\"$_\" " : '' } ( @{$method->{returnnames}} );
+
 	    foreach my $type (@{$method->{params}}) {
 		next if ! ref($type) && exists $magic_type_map{$type};
-		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '" direction="in"/>' . "\n";
+		$xml .= $indent . '      <arg ' . (@paramnames ? shift(@paramnames) : "")
+		    . 'type="' . $self->to_xml_type($type) . '" direction="in"/>' . "\n";
 	    }
 
 	    foreach my $type (@{$method->{returns}}) {
 		next if ! ref($type) && exists $magic_type_map{$type};
-		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '" direction="out"/>' . "\n";
+		$xml .= $indent . '      <arg ' . (@returnnames ? shift(@returnnames) : "")
+		    . 'type="' . $self->to_xml_type($type) . '" direction="out"/>' . "\n";
 	    }
 	    if ($method->{deprecated}) {
 		$xml .= $indent . '      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>' . "\n";
@@ -836,9 +911,12 @@ sub to_xml {
 	    my $signal = $interface->{signals}->{$sname};
 	    $xml .= $indent . '    <signal name="' . $sname . '">' . "\n";
 
+	    my @paramnames = map{ $_ ? "name=\"$_\" " : '' } ( @{$signal->{paramnames}} );
+
 	    foreach my $type (@{$signal->{params}}) {
 		next if ! ref($type) && exists $magic_type_map{$type};
-		$xml .= $indent . '      <arg type="' . $self->to_xml_type($type) . '"/>' . "\n";
+		$xml .= $indent . '      <arg ' . (@paramnames ? shift(@paramnames) : "")
+		    . 'type="' . $self->to_xml_type($type) . '"/>' . "\n";
 	    }
 	    if ($signal->{deprecated}) {
 		$xml .= $indent . '      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>' . "\n";
@@ -864,13 +942,23 @@ sub to_xml {
 	$xml .= $indent . '  </interface>' . "\n";
     }
 
-    foreach my $child (@{$self->{children}}) {
-	if (ref($child) eq __PACKAGE__) {
-	    $xml .= $child->to_xml($indent . "  ");
-	} else {
-	    $xml .= $indent . '  <node name="' . $child . '"/>' . "\n";
+    #
+    # Interfaces don't have children,  objects do
+    #
+    if ($obj) {
+	foreach ( $obj->_get_sub_nodes ) {
+	    $xml .= $indent . '  <node name="/' . $_ . '"/>' . "\n";
+	}
+    } else {
+	foreach my $child (@{$self->{children}}) {
+	    if (ref($child) eq __PACKAGE__) {
+		$xml .= $child->to_xml($indent . "  ");
+	    } else {
+		$xml .= $indent . '  <node name="' . $child . '"/>' . "\n";
+	    }
 	}
     }
+
     $xml .= $indent . "</node>\n";
 }
 

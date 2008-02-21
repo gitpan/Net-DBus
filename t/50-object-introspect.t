@@ -16,7 +16,7 @@ my $object = Net::DBus::Object->new($service, "/org/example/Object/OtherObject")
 
 my $introspector = $object->_introspector;
 
-my $xml_got = $introspector->format();
+my $xml_got = $introspector->format($object);
     
 my $xml_expect = <<EOF;
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"

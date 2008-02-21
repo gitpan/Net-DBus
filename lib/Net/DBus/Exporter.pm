@@ -215,10 +215,20 @@ not to expect / wait for a reply message
 
 =item deprecated
 
-Indicate that use of this method/signal/property is discouraged, and 
+Indicate that use of this method/signal/property is discouraged, and
 it may disappear altogether in a future release. Clients will typically
 print out a warning message when a deprecated method/signal/property
 is used.
+
+=item param_names
+
+An array of strings specifying names for the input parameters of the
+method or signal. If omitted, no names will be assigned.
+
+=item return_names
+
+An array of strings specifying names for the return parameters of the
+method. If omitted, no names will be assigned.
 
 =back
 
@@ -270,14 +280,8 @@ sub import {
 }
 
 sub _dbus_introspector {
-    my $object = shift;
     my $class = shift;
 
-    $class = ref($object) unless $class;
-    die "no introspection data available for '" . 
-	$object->get_object_path . 
-	"' and object is not cast to any interface" unless $class;
-    
     if (!exists $dbus_exports{$class}) {
 	# If this class has not been exported, lets look
 	# at the parent class & return its introspection
@@ -291,7 +295,7 @@ sub _dbus_introspector {
 		# choice of not supporting introspection
 		next if $parent eq "Net::DBus::Object";
 
-		my $ins = &_dbus_introspector($object, $parent);
+		my $ins = &_dbus_introspector($parent);
 		if ($ins) {
 		    return $ins;
 		}
@@ -301,9 +305,8 @@ sub _dbus_introspector {
     }
 
     unless (exists $dbus_introspectors{$class}) {
-	my $is = Net::DBus::Binding::Introspector->new(object_path => $object->get_object_path);
-	
-	&_dbus_introspector_add(ref($object), $is);
+	my $is = Net::DBus::Binding::Introspector->new();
+	&_dbus_introspector_add($class, $is);
 	$dbus_introspectors{$class} = $is;
     }
     
@@ -317,16 +320,16 @@ sub _dbus_introspector_add {
     my $exports = $dbus_exports{$class};
     if ($exports) {
 	foreach my $method (keys %{$exports->{methods}}) {
-	    my ($params, $returns, $interface, $attributes) = @{$exports->{methods}->{$method}};
-	    $introspector->add_method($method, $params, $returns, $interface, $attributes);
+	    my ($params, $returns, $interface, $attributes, $paramnames, $returnnames) = @{$exports->{methods}->{$method}};
+	    $introspector->add_method($method, $params, $returns, $interface, $attributes, $paramnames, $returnnames);
 	}
 	foreach my $prop (keys %{$exports->{props}}) {
 	    my ($type, $access, $interface, $attributes) = @{$exports->{props}->{$prop}};
 	    $introspector->add_property($prop, $type, $access, $interface, $attributes);
 	}
 	foreach my $signal (keys %{$exports->{signals}}) {
-	    my ($params, $interface, $attributes) = @{$exports->{signals}->{$signal}};
-	    $introspector->add_signal($signal, $params, $interface, $attributes);
+	    my ($params, $interface, $attributes, $paramnames) = @{$exports->{signals}->{$signal}};
+	    $introspector->add_signal($signal, $params, $interface, $attributes, $paramnames);
 	}
     }
     
@@ -382,8 +385,19 @@ sub dbus_method {
     if (!$interface) {
 	die "interface not specified & no default interface defined";
     }
-    
-    $dbus_exports{$caller}->{methods}->{$name} = [$params, $returns, $interface, \%attributes];
+
+    my $param_names = [];
+    if ( $attributes{param_names} ) {
+      $param_names = $attributes{param_names} if ref($attributes{param_names}) eq "ARRAY";
+      delete($attributes{param_names});
+    }
+    my $return_names = [];
+    if ( $attributes{return_names} ) {
+      $return_names = $attributes{return_names} if ref($attributes{return_names}) eq "ARRAY";
+      delete($attributes{return_names});
+    }
+
+    $dbus_exports{$caller}->{methods}->{$name} = [$params, $returns, $interface, \%attributes, $param_names, $return_names];
 }
 
 
@@ -406,7 +420,7 @@ sub dbus_property {
     my $interface = $dbus_exports{$caller}->{interface};
     my %attributes;
     
-    if (@_ && !ref($_[0])) {
+    if (@_ && (!ref($_[0]) || (ref($_[0]) eq "ARRAY"))) {
 	$type = shift;
     }
     if (@_ && !ref($_[0])) {
@@ -422,14 +436,14 @@ sub dbus_property {
     if (!$interface) {
 	die "interface not specified & no default interface defined";
     }
-    
+
     $dbus_exports{$caller}->{props}->{$name} = [$type, $access, $interface, \%attributes];
 }
 
 
-=item dbus_signal($name, $params);
+=item dbus_signal($name, $params, [\%attributes]);
 
-=item dbus_signal($name, $params, $interface);
+=item dbus_signal($name, $params, $interface, [\%attributes]);
 
 Exports a signal called C<$name>, having parameters whose types
 are defined by C<$params>, and returning values whose types are
@@ -464,7 +478,13 @@ sub dbus_signal {
 	die "interface not specified & no default interface defined";
     }
 
-    $dbus_exports{$caller}->{signals}->{$name} = [$params, $interface, \%attributes];
+    my $param_names = [];
+    if ( $attributes{param_names} ) {
+      $param_names = $attributes{param_names} if ref($attributes{param_names}) eq "ARRAY";
+      delete($attributes{param_names});
+    }
+
+    $dbus_exports{$caller}->{signals}->{$name} = [$params, $interface, \%attributes, $param_names];
 }
 
 1;
@@ -532,6 +552,17 @@ return any value
     }
 
     dbus_method("PlayMP3", ["string"], [], { deprecated => 1, no_return => 1 });
+
+Or giving names to input parameters:
+
+    sub PlayMP3 {
+	my $self = shift;
+        my $track = shift;
+
+        system "mpg123 $track &";
+    }
+
+    dbus_method("PlayMP3", ["string"], [], { param_names => ["track"] });
 
 =back
 

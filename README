@@ -113,13 +113,13 @@ Daniel Berrange <dan at berrange dot com>
 COPYRIGHT AND LICENCE
 ---------------------
 
-Copyright (C) 2004-2006 Daniel Berrange
+Copyright (C) 2004-2008 Daniel Berrange
 
 Net-DBus may be redistributed and/or modified under the terms of Perl itself.
 Either:
 
 a) the GNU General Public License as published by the Free
-   Software Foundation; either version 1, or (at your option) any
+   Software Foundation; either version 2, or (at your option) any
    later version
 
 or

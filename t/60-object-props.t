@@ -1,5 +1,5 @@
 # -*- perl -*-
-use Test::More tests => 13;
+use Test::More tests => 16;
 
 use strict;
 use warnings;
@@ -36,19 +36,34 @@ sub age {
     return $self->{age};
 }
 
+sub parents {
+    my $self = shift;
+    $self->{parents} = shift if @_;
+    return $self->{parents};
+}
+
+sub height {
+    my $self = shift;
+    $self->{height} = shift if @_;
+    return $self->{height};
+}
+
 dbus_property("name", "string");
 dbus_property("email", "string", "read");
 dbus_property("age", "int32" ,"write");
+dbus_property("parents", ["array", "string"]);
+dbus_property("height", "double", "write");
 
 package main;
 
+use Net::DBus qw(:typing);
 my $bus = Net::DBus->test;
 my $service = $bus->export_service("org.cpan.Net.Bus.test");
 my $object = MyObject->new($service, "/org/example/MyObject");
 
 my $introspector = $object->_introspector;
 
-my $xml_got = $introspector->format();
+my $xml_got = $introspector->format($object);
     
 my $xml_expect = <<EOF;
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
@@ -57,7 +72,9 @@ my $xml_expect = <<EOF;
   <interface name="org.example.MyObject">
     <property name="age" type="i" access="write"/>
     <property name="email" type="s" access="read"/>
+    <property name="height" type="d" access="write"/>
     <property name="name" type="s" access="readwrite"/>
+    <property name="parents" type="as" access="readwrite"/>
   </interface>
   <interface name="org.freedesktop.DBus.Introspectable">
     <method name="Introspect">
@@ -236,3 +253,20 @@ GET_EMAIL: {
 }
 
 
+SET_HEIGHT: {
+    my $msg = $bus->get_connection()->make_method_call_message("org.example.MyService",
+							       "/org/example/MyObject",
+							       "org.freedesktop.DBus.Properties",
+							       "Set");
+
+    $introspector->encode($msg, "methods", "Set", "params", "org.example.MyObject", "height", dbus_double(1.414));
+
+    is($msg->get_signature, "ssv", "signature is ssvd");
+
+    my $reply = $bus->get_connection->send_with_reply_and_block($msg);
+
+    is($reply->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
+
+    ok($object->height > 1.410 &&
+       $object->height < 1.420, "height is 1.414");
+}

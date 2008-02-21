@@ -143,6 +143,14 @@ parameter should be an instance of L<Net::DBus::Service>.
 The latter is typically obtained by calling the C<export_service>
 method on the L<Net::DBus> object.
 
+=item my $object = Net::DBus::Object->new($parentobj, $subpath)
+
+This creates a new DBus child object with an path of C<$subpath>
+relative to its parent C<$parentobj>. The C<$subpath>
+parameter should be a string complying with the usual
+DBus requirements for object paths, while the C<$parentobj>
+parameter should be an instance of L<Net::DBus::Object>.
+
 =cut
 
 sub new {
@@ -251,6 +259,20 @@ sub _unregister_child {
 
     $self->get_service->_unregister_object($object);
     delete $self->{children}->{$object->get_object_path};
+}
+
+# return a list of sub nodes for this object
+sub _get_sub_nodes {
+    my $self = shift;
+    my %uniq;
+
+    my $base = "$self->{object_path}/";
+    foreach ( keys( %{$self->{children}} ) ) {
+      m/^$base([^\/]+)/;
+      $uniq{$1} = 1;
+    }
+
+    return sort( keys( %uniq ) );
 }
 
 =item my $service = $object->get_service
@@ -455,7 +477,7 @@ sub _dispatch {
 	if ($method_name eq "Introspect" &&
 	    $self->_introspector &&
 	    $ENABLE_INTROSPECT) {
-	    my $xml = $self->_introspector->format;
+	    my $xml = $self->_introspector->format($self);
 	    $reply = $connection->make_method_return_message($message);
 
 	    $self->_introspector->encode($reply, "methods", $method_name, "returns", $xml);
@@ -606,7 +628,7 @@ sub _introspector {
     my $self = shift;
 
     if (!$self->{introspected}) {
-	$self->{introspector} = Net::DBus::Exporter::_dbus_introspector($self);
+	$self->{introspector} = Net::DBus::Exporter::_dbus_introspector(ref($self));
 	$self->{introspected} = 1;
     }
     return $self->{introspector};

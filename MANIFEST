@@ -1,8 +1,8 @@
 AUTHORS
 autobuild.sh
 CHANGES
-COPYING
 DBus.xs
+examples/dump-object-xml.pl
 examples/dump-object.pl
 examples/example-client-async.pl
 examples/example-client-no-introspect.pl
@@ -47,9 +47,13 @@ lib/Net/DBus/Test/MockObject.pm
 lib/Net/DBus/Tutorial.pod
 lib/Net/DBus/Tutorial/ExportingObjects.pod
 lib/Net/DBus/Tutorial/UsingObjects.pod
+LICENSE
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
+META.yml
+META.yml.PL
+Net-DBus.spec
 Net-DBus.spec.PL
 README
 t/00-constants.t
@@ -67,8 +71,7 @@ t/55-method-calls.t
 t/56-scalar-param-typing.t
 t/60-object-props.t
 t/65-object-magic.t
+t/66-child-objects.t
 t/70-errors.t
 t/75-notifications.t
 typemap
-Net-DBus.spec
-META.yml                                 Module meta-data (added by MakeMaker)

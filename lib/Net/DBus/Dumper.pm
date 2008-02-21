@@ -119,22 +119,31 @@ sub _dbus_dump_introspector {
     
     my @data;
     push @data, "Object: ", $ins->get_object_path, "\n";
-    foreach my $interface ($ins->list_interfaces) {
+    foreach my $interface (sort { $a cmp $b } $ins->list_interfaces) {
 	push @data, "  Interface: ", $interface, "\n";
-	foreach my $method ($ins->list_methods($interface)) {
+	foreach my $method (sort {$a cmp $b } $ins->list_methods($interface)) {
 	    push @data, "    Method: ", $method, "\n";
+	    my @paramnames = $ins->get_method_param_names($interface, $method);
 	    foreach my $param ($ins->get_method_params($interface, $method)) {
-		push @data, &_dbus_dump_types("      > ", $param);
+		my $name = @paramnames ? shift @paramnames : undef;
+		push @data, &_dbus_dump_types("      > ", $param, $name);
 	    }
+	    my @returnnames = $ins->get_method_return_names($interface, $method);
 	    foreach my $param ($ins->get_method_returns($interface, $method)) {
-		push @data, &_dbus_dump_types("      < ", $param);
+		my $name = @returnnames ? shift @returnnames : undef;
+		push @data, &_dbus_dump_types("      < ", $param, $name);
 	    }
 	}
-	foreach my $signal ($ins->list_signals($interface)) {
+	foreach my $signal (sort { $a cmp $b } $ins->list_signals($interface)) {
 	    push @data, "    Signal: ", $signal, "\n";
+	    my @paramnames = $ins->get_signal_param_names($interface, $signal);
 	    foreach my $param ($ins->get_signal_params($interface, $signal)) {
-		push @data, &_dbus_dump_types("      > ", $param);
+		my $name = @paramnames ? shift @paramnames : undef;
+		push @data, &_dbus_dump_types("      > ", $param, $name);
 	    }
+	}
+	foreach my $child (sort { $a cmp $b } $ins->list_children()) {
+	    push @data, "  Child: ", $child, "\n";
 	}
     }
     return @data;
@@ -143,15 +152,25 @@ sub _dbus_dump_introspector {
 sub _dbus_dump_types {
     my $indent = shift;
     my $type = shift;
+    my $name = shift;
     
     my @data;
+    push @data, $indent;
     if (ref($type)) {
-	push @data, $indent, $type->[0], "\n";
+	push @data, $type->[0];
+	if (defined $name) {
+	    push @data, " ($name)";
+	}
+	push @data, "\n";
 	for (my $i = 1 ; $i <= $#{$type} ; $i++) {
 	    push @data, &_dbus_dump_types($indent . "  ", $type->[$i]);
 	}
     } else {
-	push @data, $indent, $type, "\n";
+	push @data, $type;
+	if (defined $name) {
+	    push @data, " ($name)";
+	}
+	push @data, "\n";
     }
     return @data;
 }

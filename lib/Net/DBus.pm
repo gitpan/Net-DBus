@@ -87,7 +87,7 @@ use strict;
 use warnings;
 
 BEGIN {
-    our $VERSION = '0.33.5';
+    our $VERSION = '0.33.6';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
