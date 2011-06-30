@@ -3,9 +3,6 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
-`pkg-config --atleast-version=0.90 dbus-1`;
-my $has_0_90 = (($? >> 8) == 0 ? 1 : 0);
-
 my $DBUS_LIBS = `pkg-config --libs dbus-1`;
 my $DBUS_CFLAGS = `pkg-config --cflags dbus-1`;
 
@@ -14,6 +11,11 @@ if (!defined $DBUS_LIBS || !defined DBUS_CFLAGS) {
 }
 if (!$DBUS_LIBS || !$DBUS_CFLAGS) {
     die "'pkg-config' didn't report any compiler/linker flags for dbus library\n";
+}
+
+my $wall = "";
+if ($^O eq "linux") {
+    $wall = "-Wall";
 }
 
 WriteMakefile(
@@ -26,10 +28,8 @@ WriteMakefile(
 		  },
 	      'AUTHOR' => 'Daniel Berrange <dan@berrange.com>',
 	      'LIBS' => [$DBUS_LIBS],
-	      'DEFINE' => ($has_0_90 ?
-			   "-DDBUS_API_SUBJECT_TO_CHANGE -DHAVE_CONN_DISCONNECT=0 -DNET_DBUS_DEBUG=1" :
-			   "-DDBUS_API_SUBJECT_TO_CHANGE -DHAVE_CONN_DISCONNECT=1 -DNET_DBUS_DEBUG=1"),
-	      'INC' => "-Wall $DBUS_CFLAGS",
+	      'DEFINE' => ("-DNET_DBUS_DEBUG=1"),
+	      'INC' => "$wall $DBUS_CFLAGS",
               'NO_META' => 1,
 	      'depend' => {
 		  Net-DBus.spec => '$(VERSION_FROM)',

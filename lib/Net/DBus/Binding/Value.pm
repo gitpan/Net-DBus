@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -62,10 +62,10 @@ should be used.
 sub new {
     my $class = shift;
     my $self = [];
-    
+
     $self->[0] = shift;
     $self->[1] = shift;
-    
+
     bless $self, $class;
 
     return $self;
@@ -100,16 +100,16 @@ sub type {
 
 =back
 
+=head1 AUTHOR
+
+Daniel P. Berrange
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2011 Daniel P. Berrange
+
 =head1 SEE ALSO
 
 L<Net::DBus>, L<Net::DBus::Binding::Introspector>, L<Net::DBus::Binding::Iterator>
-
-=head1 AUTHOR
-
-Daniel Berrange E<lt>dan@berrange.comE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright 2004-2005 by Daniel Berrange
 
 =cut

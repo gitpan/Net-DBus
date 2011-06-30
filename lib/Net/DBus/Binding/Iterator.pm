@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -116,7 +116,7 @@ a valid object path, from/to the message iterator
 
 =item $iter->append_signature($val);
 
-Read or write a UTF-8 string, whose contents is a 
+Read or write a UTF-8 string, whose contents is a
 valid type signature, value from/to the message iterator
 
 =item my $val = $iter->get_int16()
@@ -167,7 +167,7 @@ build of Perl does not support 64 bit integers
 
 =item $iter->append_double($val);
 
-Read or write a double precision floating point value 
+Read or write a double precision floating point value
 from/to the message iterator
 
 =cut
@@ -205,7 +205,7 @@ constants.
 =cut
 
 sub get {
-    my $self = shift;    
+    my $self = shift;
     my $type = shift;
 
     if (defined $type) {
@@ -285,13 +285,13 @@ sub get {
 =item my $hashref = $iter->get_dict()
 
 If the iterator currently points to a dictionary value, unmarshalls
-and returns the value as a hash reference. 
+and returns the value as a hash reference.
 
 =cut
 
 sub get_dict {
     my $self = shift;
-    
+
     my $iter = $self->_recurse();
     my $type = $iter->get_arg_type();
     my $dict = {};
@@ -311,14 +311,14 @@ sub get_dict {
 =item my $hashref = $iter->get_array()
 
 If the iterator currently points to an array value, unmarshalls
-and returns the value as a array reference. 
+and returns the value as a array reference.
 
 =cut
 
 sub get_array {
     my $self = shift;
     my $array_type = shift;
-    
+
     my $iter = $self->_recurse();
     my $type = $iter->get_arg_type();
     my $array = [];
@@ -353,14 +353,14 @@ sub get_variant {
 =item my $hashref = $iter->get_struct()
 
 If the iterator currently points to an struct value, unmarshalls
-and returns the value as a array reference. The values in the array 
+and returns the value as a array reference. The values in the array
 correspond to members of the struct.
 
 =cut
 
 sub get_struct {
     my $self = shift;
-    
+
     my $iter = $self->_recurse();
     my $type = $iter->get_arg_type();
     my $struct = [];
@@ -462,7 +462,7 @@ sub append {
 
 =item my $type = $iter->guess_type($value)
 
-Make a best guess at the on the wire data type to use for 
+Make a best guess at the on the wire data type to use for
 marshalling C<$value>. If the value is a hash reference,
 the dictionary type is returned; if the value is an array
 reference the array type is returned; otherwise the string
@@ -483,12 +483,14 @@ sub guess_type {
 
 		if (!defined $subtype) {
 		    if ($maintype == &Net::DBus::Binding::Message::TYPE_DICT_ENTRY) {
-			$subtype = [ $self->guess_type(($value->value())[0]->[0]), 
+			$subtype = [ $self->guess_type(($value->value())[0]->[0]),
 				     $self->guess_type(($value->value())[0]->[1]) ];
 		    } elsif ($maintype == &Net::DBus::Binding::Message::TYPE_ARRAY) {
 			$subtype = [ $self->guess_type(($value->value())[0]->[0]) ];
 		    } elsif ($maintype == &Net::DBus::Binding::Message::TYPE_STRUCT) {
 			$subtype = [ map { $self->guess_type($_) } @{($value->value())[0]} ];
+		    } elsif ($maintype == &Net::DBus::Binding::Message::TYPE_VARIANT) {
+			$subtype = $self->guess_type($value->value);
 		    } else {
 			die "Unguessable compound type '$maintype' ('", chr($maintype), "')\n";
 		    }
@@ -519,7 +521,7 @@ sub guess_type {
 
 =item my $sig = $iter->format_signature($type)
 
-Given a data type representation, construct a corresponding 
+Given a data type representation, construct a corresponding
 signature string
 
 =cut
@@ -530,12 +532,12 @@ sub format_signature {
     my ($sig, $t, $i);
 
     $sig = "";
-    $i = 0;use Data::Dumper;
+    $i = 0;
 
     if (ref($type) eq "ARRAY") {
 	while ($i <= $#{$type}) {
 	    $t = $$type[$i];
-	    
+	
 	    if (ref($t) eq "ARRAY") {
 		$sig .= $self->format_signature($t);
 	    } elsif ($t == &Net::DBus::Binding::Message::TYPE_DICT_ENTRY) {
@@ -546,13 +548,13 @@ sub format_signature {
 	    } else {
 		$sig .= chr($t);
 	    }
-	    
+	
 	    $i++;
 	}
     } else {
 	$sig .= chr ($type);
     }
-    
+
     return $sig;
 }
 
@@ -568,7 +570,7 @@ sub append_array {
     my $self = shift;
     my $array = shift;
     my $type = shift;
-    
+
     if (!defined($type)) {
 	$type = [$self->guess_type($array->[0])];
     }
@@ -578,7 +580,7 @@ sub append_array {
 
     my $sig = $self->format_signature($type);
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_ARRAY, $sig);
-    
+
     foreach my $value (@{$array}) {
 	$iter->append($value, $type->[0]);
     }
@@ -607,7 +609,7 @@ sub append_struct {
     }
 
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_STRUCT, "");
-    
+
     my @type = defined $type ? @{$type} : ();
     foreach my $value (@{$struct}) {
 	$iter->append($value, shift @type);
@@ -636,7 +638,7 @@ sub append_dict {
     $sig .= "}";
 
     my $iter = $self->_open_container(&Net::DBus::Binding::Message::TYPE_ARRAY, $sig);
-    
+
     foreach my $key (keys %{$hash}) {
 	my $value = $hash->{$key};
 	my $entry = $iter->_open_container(&Net::DBus::Binding::Message::TYPE_DICT_ENTRY, "");
@@ -686,8 +688,8 @@ C<Net::DBus::Binding::Message::TYPE_*>
 
 =item my $type = $iter->get_element_type
 
-If the iterator points to an array, retrieves the type code of 
-array elements. The returned code will correspond to one of the 
+If the iterator points to an array, retrieves the type code of
+array elements. The returned code will correspond to one of the
 constants C<Net::DBus::Binding::Message::TYPE_*>
 
 =cut
@@ -698,16 +700,16 @@ constants C<Net::DBus::Binding::Message::TYPE_*>
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Message>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Message>
 
 =cut

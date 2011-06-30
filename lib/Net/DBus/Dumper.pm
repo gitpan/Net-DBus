@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -43,7 +43,7 @@ Net::DBus::Dumper - Stringify Net::DBus objects suitable for printing
 =head1 DESCRIPTION
 
 This module serves as a debugging aid, providing a means to stringify
-a DBus related object in a form suitable for printing out. It can 
+a DBus related object in a form suitable for printing out. It can
 stringify any of the Net::DBus:* objects, generating the following
 information for each
 
@@ -87,7 +87,7 @@ use vars qw(@EXPORT);
 =item my @data = dbus_dump($object);
 
 Generates a stringified representation of an object. The object
-passed in as the parameter must be an instance of one of L<Net::DBus>, 
+passed in as the parameter must be an instance of one of L<Net::DBus>,
 L<Net::DBus::RemoteService>, L<Net::DBus::Service>,
 L<Net::DBus::RemoteObject>, L<Net::DBus::Object>. The stringified
 representation will be returned as a list of strings, with newlines
@@ -98,10 +98,10 @@ method.
 
 sub dbus_dump {
     my $object = shift;
-    
+
     my $ref = ref($object);
     die "object '$object' is not a reference" unless defined $ref;
-    
+
     if ($object->isa("Net::DBus::Object") ||
 	$object->isa("Net::DBus::RemoteObject")) {
 	return &_dbus_dump_introspector($object->_introspector);
@@ -116,7 +116,7 @@ sub dbus_dump {
 
 sub _dbus_dump_introspector {
     my $ins = shift;
-    
+
     my @data;
     push @data, "Object: ", $ins->get_object_path, "\n";
     foreach my $interface (sort { $a cmp $b } $ins->list_interfaces) {
@@ -153,7 +153,7 @@ sub _dbus_dump_types {
     my $indent = shift;
     my $type = shift;
     my $name = shift;
-    
+
     my @data;
     push @data, $indent;
     if (ref($type)) {
@@ -178,10 +178,10 @@ sub _dbus_dump_types {
 
 sub _dbus_dump_service {
     my $service = shift;
-    
+
     my @data;
     push @data, "Service: ", $service->get_service_name, "\n";
-    
+
     my @objects = &_dbus_dump_children($service, "/");
     foreach (@objects) {
 	push @data, "  Object: $_\n";
@@ -213,15 +213,15 @@ sub _dbus_dump_children {
 
 sub _dbus_dump_bus {
     my $bus = shift;
-    
+
     my @data;
     push @data, "Bus: \n";
-    
-    
+
+
     my $dbus = $bus->get_service("org.freedesktop.DBus");
     my $obj = $dbus->get_object("/org/freedesktop/DBus");
     my $names = $obj->ListNames();
-    
+
     foreach (sort { $a cmp $b } @{$names}) {
 	push @data, "  Service: ", $_, "\n";
     }
@@ -240,13 +240,17 @@ It should print out a list of object paths registered against a
 service, but this only currently works for service implemented
 in Perl
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<Net::DBus>, L<Net::DBus::RemoteService>, L<Net::DBus::Service>, 
-L<Net::DBus::RemoteObject>, L<Net::DBus::Object>, L<Data::Dumper>.
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2005 Daniel Berrange <dan@berrange.com>
+Copyright (C) 2005-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus>, L<Net::DBus::RemoteService>, L<Net::DBus::Service>,
+L<Net::DBus::RemoteObject>, L<Net::DBus::Object>, L<Data::Dumper>.
 
 =cut

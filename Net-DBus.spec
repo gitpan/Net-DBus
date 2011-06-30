@@ -6,7 +6,7 @@
 
 Summary: Perl API to the DBus message system
 Name: perl-%{appname}
-Version: 0.33.6
+Version: 1.0.0
 Release: 1%{_extra_release}
 License: GPLv2+ or Artistic
 Group: Development/Libraries
@@ -14,8 +14,8 @@ URL:            http://search.cpan.org/dist/%{appname}
 Source0:        http://www.cpan.org/modules/by-module/Net/%{appname}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
-Requires: dbus >= 0.33
-BuildRequires: dbus-devel > 0.33
+Requires: dbus >= 1.0.0
+BuildRequires: dbus-devel > 1.0.0
 BuildRequires: perl(XML::Twig)
 BuildRequires: perl(Time::HiRes)
 BuildRequires: perl(Test::More)
@@ -62,8 +62,3 @@ rm -rf $RPM_BUILD_ROOT
 %{perl_vendorarch}/auto/Net/DBus
 
 %changelog
-* Fri Jan  6 2006 Daniel Berrange <berrange@localhost.localdomain> - 0.33.1-1
-- Added explicit dependancies on perl-libxml-perl and perl-Time-HiRes
-- Increased min required dbus version to 0.33 since we 
-  need the dbus_connection_unregister_object_path method
-

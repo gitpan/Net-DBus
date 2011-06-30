@@ -1,5 +1,5 @@
 # -*- perl -*-
-use Test::More tests => 16;
+use Test::More tests => 18;
 
 use strict;
 use warnings;
@@ -86,6 +86,10 @@ my $xml_expect = <<EOF;
       <arg type="s" direction="in"/>
       <arg type="s" direction="in"/>
       <arg type="v" direction="out"/>
+    </method>
+    <method name="GetAll">
+      <arg type="s" direction="in"/>
+      <arg type="a{sv}" direction="out"/>
     </method>
     <method name="Set">
       <arg type="s" direction="in"/>
@@ -269,4 +273,23 @@ SET_HEIGHT: {
 
     ok($object->height > 1.410 &&
        $object->height < 1.420, "height is 1.414");
+}
+
+GET_ALL: {
+    my $msg = Net::DBus::Binding::Message::MethodCall->new(service_name => "org.example.MyService",
+							   object_path => "/org/example/MyObject",
+							   interface => "org.freedesktop.DBus.Properties",
+							   method_name => "GetAll");
+
+    my $iter = $msg->iterator(1);
+    $iter->append_string("org.example.MyObject");
+    $iter->append_string("name");
+
+    my $reply = $bus->get_connection->send_with_reply_and_block($msg);
+
+    is($reply->get_type, &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_RETURN);
+
+    my ($value) = $reply->get_args_list;
+    # we use sort because there is no strict order of keys(...) call result
+    is_deeply([sort(keys(%$value))], [sort("name", "email", "parents")], "all readable properties have been received");
 }

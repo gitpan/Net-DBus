@@ -5,7 +5,6 @@ use strict;
 
 use Net::DBus;
 use Net::DBus::Reactor;
-use Net::DBus::Callback;
 use Net::DBus::Annotation qw(:call);
 
 my $bus = Net::DBus->session();
@@ -35,7 +34,7 @@ sub tick {
 
 
 print "Adding timer\n";
-$r->add_timeout(500, Net::DBus::Callback->new(method => \&tick));
+$r->add_timeout(500, \&tick);
 
 print "Entering main loop\n";
 $r->run;

@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2006 Daniel P. Berrange
+# Copyright (C) 2005-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -208,7 +208,7 @@ an empty string if there is no applicable interface for this message.
 
 sub get_interface {
     my $self = shift;
-    
+
     return $self->{interface};
 }
 
@@ -221,7 +221,7 @@ empty string if there is no applicable object for this message.
 
 sub get_path {
     my $self = shift;
-    
+
     return $self->{path};
 }
 
@@ -235,7 +235,7 @@ the message is being broadcast to all clients.
 
 sub get_destination {
     my $self = shift;
-    
+
     return $self->{destination};
 }
 
@@ -247,7 +247,7 @@ Retireves the unique name of the client sending the message
 
 sub get_sender {
     my $self = shift;
-    
+
     return $self->{sender};
 }
 
@@ -262,7 +262,7 @@ is yet to be sent.
 
 sub get_serial {
     my $self = shift;
-    
+
     return $self->{serial};
 }
 
@@ -275,7 +275,7 @@ while for signals, retrieves the name of the signal.
 
 sub get_member {
     my $self = shift;
-    
+
     return $self->{member};
 }
 
@@ -317,7 +317,7 @@ an instance of the C<Net::DBus::Binding::Iterator> class.
 sub iterator {
     my $self = shift;
     my $append = @_ ? shift : 0;
-    
+
     return Net::DBus::Test::MockIterator->_new(data => $self->{data},
 					       append => $append);
 }
@@ -325,13 +325,13 @@ sub iterator {
 =item $boolean = $msg->get_no_reply()
 
 Gets the flag indicating whether the message is expecting
-a reply to be sent. 
+a reply to be sent.
 
 =cut
 
 sub get_no_reply {
     my $self = shift;
-    
+
     return $self->{no_reply};
 }
 
@@ -347,13 +347,13 @@ is reduced by removing the need for the client to wait
 
 sub set_no_reply {
     my $self = shift;
-    
+
     $self->{no_reply} = shift;
 }
 
 =item my @values = $msg->get_args_list
 
-De-marshall all the values in the body of the message, using the 
+De-marshall all the values in the body of the message, using the
 message signature to identify data types. The values are returned
 as a list.
 
@@ -361,8 +361,8 @@ as a list.
 
 sub get_args_list {
     my $self = shift;
-    
-    my @ret;    
+
+    my @ret;
     my $iter = $self->iterator;
     if ($iter->get_arg_type() != &Net::DBus::Binding::Message::TYPE_INVALID) {
 	do {
@@ -385,7 +385,7 @@ the L<Net::DBus::Binding::Iterator> object should be used instead.
 sub append_args_list {
     my $self = shift;
     my @args = @_;
-    
+
     my $iter = $self->iterator(1);
     foreach my $arg (@args) {
 	$iter->append($arg);
@@ -429,16 +429,17 @@ sub _do_get_signature {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Message>, L<Net::DBus::Test::MockConnection>, L<Net::DBus::Test::MockIterator>
 
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright (C) 2005-2009 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Message>, L<Net::DBus::Test::MockConnection>, L<Net::DBus::Test::MockIterator>
 
 =cut

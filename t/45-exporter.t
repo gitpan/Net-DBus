@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-use Test::More tests => 93;
+use Test::More tests => 94;
 
 use strict;
 use warnings;
@@ -49,7 +49,12 @@ dbus_method("NoArgsReturnsInterfaceAnnotate", "org.example.OtherObject", { depre
 dbus_method("NoReturnsInterfaceAnnotate", ["string"], "org.example.OtherObject", { deprecated => 1, param_names => ["one"] });
 dbus_method("NoArgsInterfaceAnnotate", [],["int32"], "org.example.OtherObject", { deprecated => 1, return_names => ["two"] });
 
+dbus_method("DemoInterfaceName1", [], ["string"], "_org.example._some_9object");
 
+eval {
+    dbus_method("DemoInterfaceName2", [], ["string"], "9org.example.SomeObject");
+};
+ok($@ ne "", "raised error for leading digit in interface");
 
 my $ins = Net::DBus::Exporter::_dbus_introspector(ref($obj));
 
@@ -60,6 +65,11 @@ my $wantxml = <<EOF;
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node name="/org/example/MyObject">
+  <interface name="_org.example._some_9object">
+    <method name="DemoInterfaceName1">
+      <arg type="s" direction="out"/>
+    </method>
+  </interface>
   <interface name="org.example.MyObject">
     <method name="Everything">
       <arg type="s" direction="in"/>
@@ -140,6 +150,10 @@ my $wantxml = <<EOF;
       <arg type="s" direction="in"/>
       <arg type="s" direction="in"/>
       <arg type="v" direction="out"/>
+    </method>
+    <method name="GetAll">
+      <arg type="s" direction="in"/>
+      <arg type="a{sv}" direction="out"/>
     </method>
     <method name="Set">
       <arg type="s" direction="in"/>

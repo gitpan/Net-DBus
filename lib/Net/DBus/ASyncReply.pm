@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2006 Daniel P. Berrange
+# Copyright (C) 2006-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -183,7 +183,7 @@ Daniel Berrange <dan@berrange.com>
 
 =head1 COPYRIGHT
 
-Copright (C) 2006, Daniel Berrange.
+Copright (C) 2006-2011, Daniel Berrange.
 
 =head1 SEE ALSO
 

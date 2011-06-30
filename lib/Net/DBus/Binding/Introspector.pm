@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -149,6 +149,8 @@ sub new {
 	$self->{children} = exists $params{children} ? $params{children} : [];
     }
 
+    $self->{strict} = exists $params{strict} ? $params{strict} : 0;
+
     # Some versions of dbus failed to include signals in introspection data
     # so this code adds them, letting us keep compatability with old versions
     if (defined $self->{object_path} &&
@@ -198,10 +200,12 @@ sub has_interface {
     return exists $self->{interfaces}->{$name} ? 1 : 0;
 }
 
-=item my @interfaces = $ins->has_method($name)
+=item my @interfaces = $ins->has_method($name, [$interface])
 
 Return a list of all interfaces provided by the object, which
 contain a method called C<$name>. This may be an empty list.
+The optional C<$interface> parameter can restrict the check to
+just that one interface.
 
 =cut
 
@@ -209,14 +213,42 @@ sub has_method {
     my $self = shift;
     my $name = shift;
 
-    my @interfaces;
-    foreach my $interface (keys %{$self->{interfaces}}) {
-	if (exists $self->{interfaces}->{$interface}->{methods}->{$name}) {
-	    push @interfaces, $interface;
+    if (@_) {
+	my $interface = shift;
+	return () unless exists $self->{interfaces}->{$interface};
+	return () unless exists $self->{interfaces}->{$interface}->{methods}->{$name};
+	return ($interface);
+    } else {
+	my @interfaces;
+	foreach my $interface (keys %{$self->{interfaces}}) {
+	    if (exists $self->{interfaces}->{$interface}->{methods}->{$name}) {
+		push @interfaces, $interface;
+	    }
 	}
+	return @interfaces;
     }
+}
 
-    return @interfaces;
+=item my $boolean = $ins->is_method_allowed($name[, $interface])
+
+Checks according to whether the remote caller is allowed to invoke
+the method C<$name> on the object associated with this introspector.
+If this object has 'strict exports' enabled, then only explicitly
+exported methods will be allowed. The optional C<$interface> parameter
+can restrict the check to just that one interface. Returns a non-zero
+value if the method should be allowed.
+
+=cut
+
+sub is_method_allowed {
+    my $self = shift;
+    my $name = shift;
+
+    if ($self->{strict}) {
+	return $self->has_method($name, @_) ? 1 : 0;
+    } else {
+	return 1;
+    }
 }
 
 =item my @interfaces = $ins->has_signal($name)
@@ -243,6 +275,8 @@ sub has_signal {
 
 Return a list of all interfaces provided by the object, which
 contain a property called C<$name>. This may be an empty list.
+The optional C<$interface> parameter can restrict the check to
+just that one interface.
 
 =cut
 
@@ -1191,16 +1225,16 @@ sub decode {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Exporter>, L<Net::DBus::Binding::Message>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Exporter>, L<Net::DBus::Binding::Message>
 
 =cut

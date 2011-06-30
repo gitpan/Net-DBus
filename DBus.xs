@@ -1,6 +1,6 @@
 /* -*- c -*-
  *
- * Copyright (C) 2004-2006 Daniel P. Berrange
+ * Copyright (C) 2004-2011 Daniel P. Berrange
  *
  * This program is free software; You can redistribute it and/or modify
  * it under the same terms as Perl itself. Either:
@@ -30,6 +30,11 @@ static int net_dbus_debug = 0;
 #define DEBUG_MSG(...)
 #endif
 
+#ifdef __GNUC__
+# define ignore_value(x) (({ __typeof__ (x) __x = (x); (void) __x; }))
+#else
+# define ignore_value(x) x
+#endif
 
 /*
  * On 32-bit OS (and some 64-bit) Perl does not have an
@@ -130,7 +135,7 @@ _watch_generic(DBusWatch *watch, void *data, char *key, dbus_bool_t server) {
 
     if (!call) {
       warn("Could not find watch callback %s for fd %d\n",
-	   key, dbus_watch_get_fd(watch));
+	   key, dbus_watch_get_unix_fd(watch));
       return FALSE;
     }
 
@@ -289,14 +294,12 @@ _message_filter(DBusConnection *con,
 		DBusMessage *msg,
 		void *data) {
     SV *selfref;
-    HV *self;
     SV *value;
     int count;
     int handled = 0;
     dSP;
 
     selfref = (SV*)dbus_connection_get_data(con, connection_data_slot);
-    self = (HV*)SvRV(selfref);
 
     DEBUG_MSG("Create message in filter %p\n", msg);
     DEBUG_MSG("  Type %d\n", dbus_message_get_type(msg));
@@ -336,12 +339,10 @@ void
 _pending_call_callback(DBusPendingCall *call,
 		       void *data) {
     SV *selfref;
-    HV *self;
     dSP;
 
     DEBUG_MSG("In pending call callback %p\n", call);
     selfref = (SV*)dbus_pending_call_get_data(call, pending_call_data_slot);
-    self = (HV*)SvRV(selfref);
 
     dbus_pending_call_ref(call);
 
@@ -435,8 +436,8 @@ _sv_from_error (DBusError *error)
     hv = newHV ();
 
     /* map DBusError attributes to hash keys */
-    hv_store (hv, "name", 4, newSVpv (error->name, 0), 0);
-    hv_store (hv, "message", 7, newSVpv (error->message, 0), 0);
+    ignore_value(hv_store (hv, "name", 4, newSVpv (error->name, 0), 0));
+    ignore_value(hv_store (hv, "message", 7, newSVpv (error->message, 0), 0));
 
     return sv_bless (newRV_noinc ((SV*) hv), gv_stashpv ("Net::DBus::Error", TRUE));
 }
@@ -455,7 +456,7 @@ _croak_error (DBusError *error)
 void
 _populate_constant(HV *href, char *name, int val)
 {
-    hv_store(href, name, strlen(name), newSViv(val), 0);
+    ignore_value(hv_store(href, name, strlen(name), newSViv(val), 0));
 }
 
 #define REGISTER_CONSTANT(name, key) _populate_constant(constants, #key, name)
@@ -569,11 +570,7 @@ dbus_connection_disconnect(con)
 	DBusConnection *con;
     CODE:
 	DEBUG_MSG("Closing connection %p\n", con);
-#if HAVE_CONN_DISCONNECT
-	dbus_connection_disconnect(con);
-#else
 	dbus_connection_close(con);
-#endif
 
 void
 dbus_connection_ref(con)
@@ -753,6 +750,8 @@ dbus_bus_register(con)
 	  _croak_error(&error);
 	}
 	RETVAL = reply;
+  OUTPUT:
+        RETVAL
 
 void
 dbus_bus_add_match(con, rule)
@@ -1198,7 +1197,7 @@ int
 get_fileno(watch)
 	DBusWatch *watch;
     CODE:
-	RETVAL = dbus_watch_get_fd(watch);
+	RETVAL = dbus_watch_get_unix_fd(watch);
     OUTPUT:
 	RETVAL
 
@@ -1223,7 +1222,7 @@ handle(watch, flags)
 	DBusWatch *watch;
 	unsigned int flags;
     CODE:
-	DEBUG_MSG("Handling event %d on fd %d (%p)\n", flags, dbus_watch_get_fd(watch), watch);
+	DEBUG_MSG("Handling event %d on fd %d (%p)\n", flags, dbus_watch_get_unix_fd(watch), watch);
 	dbus_watch_handle(watch, flags);
 
 

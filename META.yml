@@ -1,7 +1,7 @@
 --- #YAML:1.0
 name:         Net-DBus
 abstract:     Extension for the DBus bindings
-version:      0.33.6
+version:      1.0.0
 author:
   - Daniel P. Berrange <dan@berrange.com>
 license: gpl

@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -41,7 +41,7 @@ about APIs under the C<Net::DBus::Binding::> namespace being
 stable across releases.
 
 This module provides a convenience constructor for creating
-a message representing an error condition. 
+a message representing an error condition.
 
 =head1 METHODS
 
@@ -76,7 +76,7 @@ sub new {
 
     my $replyto = exists $params{replyto} ? $params{replyto} : die "replyto parameter is required";
 
-    my $msg = exists $params{message} ? $params{message} : 
+    my $msg = exists $params{message} ? $params{message} :
 	Net::DBus::Binding::Message::Error::_create
 	(
 	 $replyto->{message},
@@ -86,7 +86,7 @@ sub new {
     my $self = $class->SUPER::new(message => $msg);
 
     bless $self, $class;
-    
+
     return $self;
 }
 
@@ -99,7 +99,7 @@ the C<name> parameter in the constructor.
 
 sub get_error_name {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_error_name;
 }
 
@@ -115,7 +115,7 @@ Daniel P. Berrange.
 
 =head1 COPYRIGHT
 
-Copyright (C) 2005-2006 Daniel P. Berrange
+Copyright (C) 2004-2009 Daniel P. Berrange
 
 =head1 SEE ALSO
 

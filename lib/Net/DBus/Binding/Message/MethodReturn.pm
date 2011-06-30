@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -61,14 +61,14 @@ sub new {
     my %params = @_;
 
     my $call = exists $params{call} ? $params{call} : die "call parameter is required";
-    
-    my $msg = exists $params{message} ? $params{message} : 
+
+    my $msg = exists $params{message} ? $params{message} :
 	Net::DBus::Binding::Message::MethodReturn::_create($call->{message});
 
     my $self = $class->SUPER::new(message => $msg);
 
     bless $self, $class;
-    
+
     return $self;
 }
 
@@ -84,7 +84,7 @@ Daniel P. Berrange.
 
 =head1 COPYRIGHT
 
-Copyright (C) 2005-2006 Daniel P. Berrange
+Copyright (C) 2005-2009 Daniel P. Berrange
 
 =head1 SEE ALSO
 

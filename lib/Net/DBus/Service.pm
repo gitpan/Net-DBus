@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -76,7 +76,7 @@ sub new {
     $self->{bus} = shift;
     $self->{service_name} = shift;
     $self->{objects} = {};
-    
+
     bless $self, $class;
 
     $self->get_bus->get_connection->request_name($self->get_service_name);
@@ -98,7 +98,7 @@ sub get_bus {
 
 =item my $name = $service->get_service_name
 
-Retrieves the qualified name by which this service is 
+Retrieves the qualified name by which this service is
 known on the bus.
 
 =cut
@@ -113,7 +113,7 @@ sub _register_object {
     my $self = shift;
     my $object = shift;
     #my $wildcard = shift || 0;
-    
+
 #    if ($wildcard) {
 #	$self->get_bus->get_connection->
 #	    register_fallback($object->get_object_path,
@@ -143,6 +143,14 @@ sub _unregister_object {
 =pod
 
 =back
+
+=head1 AUTHOR
+
+Daniel P. Berrange
+
+=head1 COPYRIGHT
+
+Copyright (C) 2005-2011 Daniel P. Berrange
 
 =head1 SEE ALSO
 

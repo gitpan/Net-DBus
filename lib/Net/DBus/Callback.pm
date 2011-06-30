@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -47,7 +47,10 @@ Net::DBus::Callback - a callback for receiving reactor events
 This module provides a simple container for storing details
 about a callback to be invoked at a later date. It is used
 when registering to receive events from the L<Net::DBus::Reactor>
-class
+class. NB use of this module in application code is no longer
+neccessary and it remains purely for backwards compatability.
+Instead you can simply pass a subroutine code reference in
+any place where a callback is desired.
 
 =head1 METHODS
 
@@ -72,8 +75,8 @@ to be pass to the callback, in addition to those passed into the C<invoke> metho
 
 Creates a new callback object, for invoking a method on an object. The C<method>
 parameter should be the name of the method to invoke, while the C<object> parameter
-should be a blessed object on which the method will be invoked. The optional C<args> 
-parameter is an array reference of parameters to be pass to the callback, in addition 
+should be a blessed object on which the method will be invoked. The optional C<args>
+parameter is an array reference of parameters to be pass to the callback, in addition
 to those passed into the C<invoke> method.
 
 =cut
@@ -104,7 +107,7 @@ method.
 
 sub invoke {
     my $self = shift;
-    
+
     if ($self->{object}) {
 	my $obj = $self->{object};
 	my $method = $self->{method};
@@ -129,7 +132,7 @@ Daniel P. Berrange.
 
 =head1 COPYRIGHT
 
-Copyright (C) 2004-2006 Daniel P. Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
 
 =head1 SEE ALSO
 

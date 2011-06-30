@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -31,7 +31,7 @@ Net::DBus::Test::MockObject - Fake an object from the bus for unit testing
 
   # Lets fake presence of HAL...
 
-  # First we need to define the service 
+  # First we need to define the service
   my $service = $bus->export_service("org.freedesktop.Hal");
 
   # Then create a mock object
@@ -39,7 +39,7 @@ Net::DBus::Test::MockObject - Fake an object from the bus for unit testing
                                                 "/org/freedesktop/Hal/Manager");
 
   # Fake the 'GetAllDevices' method
-  $object->seed_action("org.freedesktop.Hal.Manager", 
+  $object->seed_action("org.freedesktop.Hal.Manager",
                        "GetAllDevices",
                        reply => {
                          return => [ "/org/freedesktop/Hal/devices/computer_i8042_Aux_Port",
@@ -55,8 +55,8 @@ Net::DBus::Test::MockObject - Fake an object from the bus for unit testing
 
 =head1 DESCRIPTION
 
-This provides an alternate for L<Net::DBus::Object> to enable bus 
-objects to be quickly mocked up, thus facilitating creation of unit 
+This provides an alternate for L<Net::DBus::Object> to enable bus
+objects to be quickly mocked up, thus facilitating creation of unit
 tests for services which may need to call out to objects provided
 by 3rd party services on the bus. It is typically used as a companion
 to the L<Net::DBus::MockBus> object, to enable complex services to
@@ -92,7 +92,7 @@ and C<$interface> defines the interface it will support.
 sub new {
     my $class = shift;
     my $self = {};
- 
+
     $self->{service} = shift;
     $self->{object_path} = shift;
     $self->{interface} = shift;
@@ -100,7 +100,7 @@ sub new {
     $self->{message} = shift;
 
     bless $self, $class;
-   
+
     $self->get_service->_register_object($self);
 
     return $self;
@@ -174,7 +174,7 @@ sub get_last_message_param {
 
 =item my @values = $object->get_last_message_param_list
 
-Returns a list of all the values supplied as arguments to 
+Returns a list of all the values supplied as arguments to
 the last processed message.
 
 =cut
@@ -196,7 +196,7 @@ keys set:
 
 =item signals
 
-Causes a signal to be emitted when the method is invoked. The 
+Causes a signal to be emitted when the method is invoked. The
 value associated with this key should be an instance of the
 L<Net::DBus::Binding::Message::Signal> class.
 
@@ -222,7 +222,7 @@ sub seed_action {
     my $interface = shift;
     my $method = shift;
     my %action = @_;
-    
+
     $self->{actions}->{$method} = {} unless exists $self->{actions}->{$method};
     $self->{actions}->{$method}->{$interface} = \%action;
 }
@@ -231,7 +231,7 @@ sub _dispatch {
     my $self = shift;
     my $connection = shift;
     my $message = shift;
-    
+
     my $interface = $message->get_interface;
     my $method = $message->get_member;
 
@@ -244,7 +244,7 @@ sub _dispatch {
 	$con->send($error);
 	return;
     }
-    
+
     my $action;
     if ($interface) {
 	if (!exists $self->{actions}->{$method}->{$interface}) {
@@ -278,7 +278,7 @@ sub _dispatch {
     }
 
     $self->{message} = $message;
-    
+
     if (exists $action->{error}) {
 	my $error = $con->make_error_message($message,
 					     $action->{error}->{name},
@@ -303,16 +303,20 @@ sub _dispatch {
 
 =head1 BUGS
 
-It doesn't completely replicate the API of L<Net::DBus::Binding::Object>, 
+It doesn't completely replicate the API of L<Net::DBus::Binding::Object>,
 merely enough to make the high level bindings work in a test scenario.
+
+=head1 AUTHOR
+
+Daniel P. Berrange
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2009 Daniel P. Berrange
 
 =head1 SEE ALSO
 
 L<Net::DBus>, L<Net::DBus::Object>, L<Net::DBus::Test::MockConnection>,
 L<http://www.mockobjects.com/Faq.html>
-
-=head1 COPYRIGHT
-
-Copyright 2005 Daniel Berrange <dan@berrange.com>
 
 =cut

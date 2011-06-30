@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -87,7 +87,7 @@ use strict;
 use warnings;
 
 BEGIN {
-    our $VERSION = '0.33.6';
+    our $VERSION = '1.0.0';
     require XSLoader;
     XSLoader::load('Net::DBus', $VERSION);
 }
@@ -246,6 +246,7 @@ sub _new {
 
     $self->{connection} = shift;
     $self->{signals} = [];
+    # Map well known names to RemoteService objects
     $self->{services} = {};
 
     my %params = @_;
@@ -262,7 +263,15 @@ sub _new {
 
     $self->get_connection->add_filter(sub { return $self->_signal_func(@_); });
 
-    $self->{bus} = Net::DBus::RemoteService->new($self, "org.freedesktop.DBus", "org.freedesktop.DBus");
+    $self->{bus} = $self->{services}->{"org.freedesktop.DBus"} =
+	Net::DBus::RemoteService->new($self, "org.freedesktop.DBus", "org.freedesktop.DBus");
+    $self->get_bus_object()->connect_to_signal('NameOwnerChanged', sub {
+	my ($svc, $old, $new) = @_;
+	# Slightly evil poking into the private 'owner_name' field here
+	if (exists $self->{services}->{$svc}) {
+	    $self->{services}->{$svc}->{owner_name} = $new;
+	}
+    });
 
     return $self;
 }
@@ -298,19 +307,18 @@ sub get_service {
 	return $self->{bus};
     }
 
-    my $owner = $name;
-    if ($owner !~ /^:/) {
-	$owner = $self->get_service_owner($name);
-	if (!$owner) {
-	    $self->get_bus_object->StartServiceByName($name, 0);
+    if (!exists $self->{services}->{$name}) {
+	my $owner = $name;
+	if ($owner !~ /^:/) {
 	    $owner = $self->get_service_owner($name);
+	    if (!defined $owner) {
+		$self->get_bus_object->StartServiceByName($name, 0);
+		$owner = $self->get_service_owner($name);
+	    }
 	}
+	$self->{services}->{$name} = Net::DBus::RemoteService->new($self, $owner, $name);
     }
-
-    unless (exists $self->{services}->{$owner}) {
-	$self->{services}->{$owner} = Net::DBus::RemoteService->new($self, $owner, $name);
-    }
-    return $self->{services}->{$owner};
+    return $self->{services}->{$name};
 }
 
 =item my $service = $bus->export_service($name);
@@ -393,8 +401,12 @@ sub _add_signal_receiver {
     my $path = shift;
 
     my $rule = $self->_match_rule($signal_name, $interface, $service, $path);
-
-    push @{$self->{signals}}, [$receiver, $rule, $signal_name, $interface, $service, $path];
+    push @{$self->{signals}}, { cb => $receiver,
+				rule => $rule,
+				signal_name => $signal_name,
+				interface => $interface,
+				service => $service,
+				path => $path };
     $self->{connection}->add_match($rule);
 }
 
@@ -407,12 +419,10 @@ sub _remove_signal_receiver {
     my $path = shift;
 
     my $rule = $self->_match_rule($signal_name, $interface, $service, $path);
-
     my @signals;
     foreach (@{$self->{signals}}) {
-	if ($_->[0] eq $receiver &&
-	    defined $_->[1] &&
-	    $_->[1] eq $rule) {
+	if ($_->{cb} eq $receiver &&
+	    $_->{rule} eq $rule) {
 	    $self->{connection}->remove_match($rule);
 	} else {
 	    push @signals, $_;
@@ -430,60 +440,49 @@ sub _match_rule {
     my $path = shift;
 
     my $rule = "type='signal'";
-    if ($interface) {
+    if (defined $interface) {
 	$rule .= ",interface='$interface'";
     }
-    if ($service) {
-	if ($service !~ /^:/) {
-	    # Resolve service name to a client id
-	    $service = $self->get_service_owner($service);
-	}
-	if ($service) {
-	    $rule .= ",sender='$service'";
-	}
-    }
-    if ($path) {
+    if (defined $path) {
 	$rule .= ",path='$path'";
     }
-    if ($signal_name) {
+    if (defined $service) {
+	$rule .= ",sender='$service'";
+    }
+    if (defined $signal_name) {
 	$rule .= ",member='$signal_name'";
     }
     return $rule;
 }
 
 
-sub _rule_matches {
+sub _handler_matches {
     my $self = shift;
-    my $rule = shift;
-    my $member = shift;
+    my $handler = shift;
+    my $signal_name = shift;
     my $interface = shift;
     my $sender = shift;
     my $path = shift;
 
-    my %bits;
-    map {
-	if (/^(\w+)='(.*)'$/) {
-	    $bits{$1} = $2;
-	}
-    } split /,/, $rule;
+    if (defined $handler->{signal_name} &&
+	$handler->{signal_name} ne $signal_name) {
+	return 0;
+    }
+    if (defined $handler->{interface} &&
+	$handler->{interface} ne $interface) {
+	return 0;
+    }
+    if (defined $handler->{path} &&
+	$handler->{path} ne $path) {
+	return 0;
+    }
 
+    if (defined $handler->{service}) {
+	my $owner = $self->{services}->{$handler->{service}};
+	return 0 unless defined $owner;
+	return 0 unless $owner->get_owner_name eq $sender;
+    }
 
-    if (exists $bits{member} &&
-	$bits{member} ne $member) {
-	return 0;
-    }
-    if (exists $bits{interface} &&
-	$bits{interface} ne $interface) {
-	return 0;
-    }
-    if (exists $bits{sender} &&
-	$bits{sender} ne $sender) {
-	return 0;
-    }
-    if (exists $bits{path} &&
-	$bits{path} ne $path) {
-	return 0;
-    }
     return 1;
 }
 
@@ -497,13 +496,12 @@ sub _signal_func {
     my $interface = $message->get_interface;
     my $sender = $message->get_sender;
     my $path = $message->get_path;
-    my $member = $message->get_member;
+    my $signal_name = $message->get_member;
 
     my $handled = 0;
-    foreach my $handler (grep { defined $_->[1] &&
-				$self->_rule_matches($_->[1], $member, $interface, $sender, $path) }
-			 @{$self->{signals}}) {
-	my $callback = $handler->[0];
+    foreach my $handler (@{$self->{signals}}) {
+	next unless $self->_handler_matches($handler, $signal_name, $interface, $sender, $path);
+	my $callback = $handler->{cb};
 	&$callback($message);
 	$handled = 1;
     }
@@ -517,7 +515,7 @@ sub _signal_func {
 
 These methods are not usually used, since most services provide introspection
 data to inform clients of their data typing requirements. If introspection data
-is incomplete, however, it may be neccessary for a client to mark values with
+is incomplete, however, it may be necessary for a client to mark values with
 specific data types. In such a case, the following methods can be used. They
 are not, however, exported by default so must be requested at import time by
 specifying 'use Net::DBus qw(:typing)'
@@ -741,7 +739,7 @@ Daniel Berrange <dan@berrange.com>
 
 =head1 COPYRIGHT
 
-Copyright 2004-2005 by Daniel Berrange
+Copyright 2004-2011 by Daniel Berrange
 
 =cut
 

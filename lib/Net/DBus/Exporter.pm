@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -33,6 +33,9 @@ Net::DBus::Exporter - Export object methods and signals to the bus
 
   # We're going to be a DBus object
   use base qw(Net::DBus::Object);
+
+  # Ensure only explicitly exported methods can be invoked
+  dbus_strict_exports;
 
   # Export a 'Greeting' signal taking a stringl string parameter
   dbus_signal("Greeting", ["string"]);
@@ -121,7 +124,7 @@ An IEEE double-precision floating point
 
 When specifying compound data types for parameters and return
 values, an array reference must be used, with the first element
-being the name of the compound type. 
+being the name of the compound type.
 
 =over 4
 
@@ -129,7 +132,7 @@ being the name of the compound type.
 
 An array of values, whose type os C<ARRAY-TYPE>. The C<ARRAY-TYPE>
 can be either a scalar type name, or a nested compound type. When
-values corresponding to the array type are (un)marshalled, they 
+values corresponding to the array type are (un)marshalled, they
 are represented as the Perl ARRAY data type (see L<perldata>). If,
 for example, a method was declared to have a single parameter with
 the type, ["array", "string"], then when calling the method one
@@ -146,7 +149,7 @@ data type used for the dictionary values. When values corresponding
 to the dict type are (un)marshalled, they are represented as the
 Perl HASH data type (see L<perldata>). If, for example, a method was
 declared to have a single parameter with the type ["dict", "string", "string"],
-then when calling the method one would provide a hash reference 
+then when calling the method one would provide a hash reference
 of strings,
 
    $object->hello({forename => "John", surname => "Doe"});
@@ -159,7 +162,7 @@ name associated with each value, but since Perl does not have a
 native representation of structures, they are represented by the
 LIST data type. If, for exaple, a method was declared to have a single
 parameter with the type ["struct", "string", "string"], corresponding
-to the C structure 
+to the C structure
 
     struct {
       char *forename;
@@ -179,7 +182,7 @@ When specifying introspection data for an exported service, there
 are a couple of so called C<magic> types. Parameters declared as
 magic types are not visible to clients, but instead their values
 are provided automatically by the server side bindings. One use of
-magic types is to get an extra parameter passed with the unique 
+magic types is to get an extra parameter passed with the unique
 name of the caller invoking the method.
 
 =over 4
@@ -192,8 +195,8 @@ by the bus daemon, for example ':1.15'
 
 =item "serial"
 
-The value passed in is an integer within the scope of a caller, which 
-increments on every method call. 
+The value passed in is an integer within the scope of a caller, which
+increments on every method call.
 
 =back
 
@@ -250,7 +253,7 @@ use strict;
 use Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = qw(dbus_method dbus_signal dbus_property);
+@EXPORT = qw(dbus_method dbus_signal dbus_property dbus_no_strict_exports);
 
 
 sub import {
@@ -263,6 +266,7 @@ sub import {
     }
 
     $dbus_exports{$caller} = {
+	strict => 1,
 	methods => {},
 	signals => {},
 	props => {},
@@ -270,10 +274,7 @@ sub import {
     die "usage: use Net::DBus::Exporter 'interface-name';" unless @_;
 
     my $interface = shift;
-    die "interface name '$interface' is not valid." .
-	"Names must consist of tokens using the characters a-z, A-Z, 0-9, _, " .
-	"with at least two tokens, separated by '.'\n"
-	unless $interface =~ /^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/;
+    &_validate_interface($interface);
     $dbus_exports{$caller}->{interface} = $interface;
 
     $class->export_to_level(1, "", @EXPORT);
@@ -305,11 +306,11 @@ sub _dbus_introspector {
     }
 
     unless (exists $dbus_introspectors{$class}) {
-	my $is = Net::DBus::Binding::Introspector->new();
+	my $is = Net::DBus::Binding::Introspector->new(strict=>$dbus_exports{$class}->{strict});
 	&_dbus_introspector_add($class, $is);
 	$dbus_introspectors{$class} = $is;
     }
-    
+
     return $dbus_introspectors{$class};
 }
 
@@ -332,7 +333,7 @@ sub _dbus_introspector_add {
 	    $introspector->add_signal($signal, $params, $interface, $attributes, $paramnames);
 	}
     }
-    
+
     if (defined (*{"${class}::ISA"})) {
 	no strict "refs";
 	my @isa = @{"${class}::ISA"};
@@ -348,12 +349,12 @@ sub _dbus_introspector_add {
 
 Exports a method called C<$name>, having parameters whose types
 are defined by C<$params>, and returning values whose types are
-defined by C<$returns>. If the C<$interface> parameter is 
+defined by C<$returns>. If the C<$interface> parameter is
 provided, then the method is associated with that interface, otherwise
 the default interface for the calling package is used. The
 value for the C<$params> parameter should be an array reference
 with each element defining the data type of a parameter to the
-method. Likewise, the C<$returns> parameter should be an array 
+method. Likewise, the C<$returns> parameter should be an array
 reference with each element defining the data type of a return
 value. If it not possible to export a method which accepts a
 variable number of parameters, or returns a variable number of
@@ -368,7 +369,7 @@ sub dbus_method {
     my $caller = caller;
     my $interface = $dbus_exports{$caller}->{interface};
     my %attributes;
-    
+
     if (@_ && ref($_[0]) eq "ARRAY") {
 	$params = shift;
     }
@@ -377,6 +378,7 @@ sub dbus_method {
     }
     if (@_ && !ref($_[0])) {
 	$interface = shift;
+	&_validate_interface($interface);
     }
     if (@_ && ref($_[0]) eq "HASH") {
 	%attributes = %{$_[0]};
@@ -400,15 +402,34 @@ sub dbus_method {
     $dbus_exports{$caller}->{methods}->{$name} = [$params, $returns, $interface, \%attributes, $param_names, $return_names];
 }
 
+=item dbus_no_strict_exports();
+
+If a object is using the Exporter to generate DBus introspection data,
+the default behaviour is to only allow invocation of methods which have
+been explicitly exported.
+
+To allow clients to access methods which have not been explicitly
+exported, call C<dbus_no_strict_exports>. NB, doing this may be
+a security risk if you have methods considered to be "private" for
+internal use only. As such this method should not normally be used.
+It is here only to allow switching export behaviour to match earlier
+releases.
+
+=cut
+
+sub dbus_no_strict_exports {
+    my $caller = caller;
+    $dbus_exports{$caller}->{strict} = 0;
+}
 
 =item dbus_property($name, $type, $access, [\%attributes]);
 
 =item dbus_property($name, $type, $access, $interface, [\%attributes]);
 
 Exports a property called C<$name>, whose data type is C<$type>.
-If the C<$interface> parameter is provided, then the property is 
-associated with that interface, otherwise the default interface 
-for the calling package is used. 
+If the C<$interface> parameter is provided, then the property is
+associated with that interface, otherwise the default interface
+for the calling package is used.
 
 =cut
 
@@ -419,7 +440,7 @@ sub dbus_property {
     my $caller = caller;
     my $interface = $dbus_exports{$caller}->{interface};
     my %attributes;
-    
+
     if (@_ && (!ref($_[0]) || (ref($_[0]) eq "ARRAY"))) {
 	$type = shift;
     }
@@ -428,6 +449,7 @@ sub dbus_property {
     }
     if (@_ && !ref($_[0])) {
 	$interface = shift;
+	&_validate_interface($interface);
     }
     if ($_ && ref($_[0]) eq "HASH") {
 	%attributes = %{$_[0]};
@@ -446,13 +468,12 @@ sub dbus_property {
 =item dbus_signal($name, $params, $interface, [\%attributes]);
 
 Exports a signal called C<$name>, having parameters whose types
-are defined by C<$params>, and returning values whose types are
-defined by C<$returns>. If the C<$interface> parameter is 
+are defined by C<$params>. If the C<$interface> parameter is
 provided, then the signal is associated with that interface, otherwise
 the default interface for the calling package is used. The
 value for the C<$params> parameter should be an array reference
 with each element defining the data type of a parameter to the
-signal. Signals do not have return values. It not possible to 
+signal. Signals do not have return values. It not possible to
 export a signal which has a variable number of parameters.
 
 =cut
@@ -463,12 +484,13 @@ sub dbus_signal {
     my $caller = caller;
     my $interface = $dbus_exports{$caller}->{interface};
     my %attributes;
-    
+
     if (@_ && ref($_[0]) eq "ARRAY") {
 	$params = shift;
     }
     if (@_ && !ref($_[0])) {
 	$interface = shift;
+	&_validate_interface($interface);
     }
     if (@_ && ref($_[0]) eq "HASH") {
 	%attributes = %{$_[0]};
@@ -485,6 +507,21 @@ sub dbus_signal {
     }
 
     $dbus_exports{$caller}->{signals}->{$name} = [$params, $interface, \%attributes, $param_names];
+}
+
+
+sub _validate_interface {
+    my $interface = shift;
+
+    die "interface name '$interface' is not valid.\n" .
+	" * Interface names are composed of 1 or more elements separated by a\n" .
+	"   period ('.') character. All elements must contain at least one character.\n" .
+	" * Each element must only contain the ASCII characters '[A-Z][a-z][0-9]_'\n" .
+	"   and must not begin with a digit.\n" .
+	" * Interface names must contain at least one '.' (period) character (and\n" .
+	"   thus at least two elements).\n" .
+	" * Interface names must not begin with a '.' (period) character.\n"
+    	unless $interface =~ /^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)+$/;
 }
 
 1;
@@ -566,12 +603,16 @@ Or giving names to input parameters:
 
 =back
 
+=head1 AUTHOR
+
+Daniel P. Berrange <dan@berrange.com>
+
+=head1 COPYRIGHT
+
+Copright (C) 2004-2011, Daniel Berrange.
+
 =head1 SEE ALSO
 
 L<Net::DBus::Object>, L<Net::DBus::Binding::Introspector>
-
-=head1 AUTHORS
-
-Daniel P. Berrange <dan@berrange.com>
 
 =cut

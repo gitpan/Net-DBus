@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -37,13 +37,13 @@ Manage some file handlers
                       Net::DBus::Callback->new(method => sub {
                          my $fd = shift;
                          ...read some data...
-                      }, args => [$fd]);
+                      }, args => [$fd]));
 
    $reactor->add_write($fd,
                        Net::DBus::Callback->new(method => sub {
                           my $fd = shift;
                           ...write some data...
-                       }, args => [$fd]);
+                       }, args => [$fd]));
 
 Temporarily (dis|en)able a handle
 
@@ -123,7 +123,7 @@ use Time::HiRes qw(gettimeofday);
 
 =item my $reactor = Net::DBus::Reactor->new();
 
-Creates a new event loop ready for monitoring file handles, or 
+Creates a new event loop ready for monitoring file handles, or
 generating timeouts. Except in very unsual circumstances (examples
 of which I can't think up) it is not neccessary or desriable to
 explicitly create new reactor instances. Instead call the L<main>
@@ -172,7 +172,7 @@ sub main {
 
 =item $reactor->manage($server);
 
-Registers a C<Net::DBus::Connection> or C<Net::DBus::Server> object
+Registers a C<Net::DBus::Binding::Connection> or C<Net::DBus::Binding::Server> object
 for management by the event loop. This basically involves
 hooking up the watch & timeout callbacks to the event loop.
 For connections it will also register a hook to invoke the
@@ -202,12 +202,12 @@ sub manage {
 	    $self->_manage_watch_toggle($object, $watch);
 	});
     }
-    
+
     if ($object->can("set_timeout_callbacks")) {
 	$object->set_timeout_callbacks(sub {
 	    my $object = shift;
 	    my $timeout = shift;
-	    
+	
 	    my $key = $self->add_timeout($timeout->get_interval,
 					 Net::DBus::Callback->new(object => $timeout,
 								  method => "handle",
@@ -217,30 +217,30 @@ sub manage {
 	}, sub {
 	    my $object = shift;
 	    my $timeout = shift;
-	    
+	
 	    my $key = $timeout->get_data;
 	    $self->remove_timeout($key);
 	}, sub {
 	    my $object = shift;
 	    my $timeout = shift;
-	    
+	
 	    my $key = $timeout->get_data;
 	    $self->remove_timeout($key,
 				  $timeout->is_enabled,
 				  $timeout->get_interval);
 	});
     }
-    
+
     if ($object->can("dispatch")) {
-	$self->add_hook(Net::DBus::Callback->new(object => $object, 
-						 method => "dispatch", 
-						 args => []), 
+	$self->add_hook(Net::DBus::Callback->new(object => $object,
+						 method => "dispatch",
+						 args => []),
 			1);
     }
     if ($object->can("flush")) {
-	$self->add_hook(Net::DBus::Callback->new(object => $object, 
-						 method => "flush", 
-						 args => []), 
+	$self->add_hook(Net::DBus::Callback->new(object => $object,
+						 method => "flush",
+						 args => []),
 			1);
     }
 }
@@ -253,25 +253,25 @@ sub _manage_watch_on {
     my $flags = $watch->get_flags;
 
     if ($flags & &Net::DBus::Binding::Watch::READABLE) {
-	$self->add_read($watch->get_fileno, 
-			Net::DBus::Callback->new(object => $watch, 
-					    method => "handle", 
-					    args => [&Net::DBus::Binding::Watch::READABLE]), 
+	$self->add_read($watch->get_fileno,
+			Net::DBus::Callback->new(object => $watch,
+					    method => "handle",
+					    args => [&Net::DBus::Binding::Watch::READABLE]),
 			$watch->is_enabled);
     }
     if ($flags & &Net::DBus::Binding::Watch::WRITABLE) {
-	$self->add_write($watch->get_fileno, 
-			 Net::DBus::Callback->new(object => $watch, 
-					     method => "handle", 
-					     args => [&Net::DBus::Binding::Watch::WRITABLE]), 
+	$self->add_write($watch->get_fileno,
+			 Net::DBus::Callback->new(object => $watch,
+					     method => "handle",
+					     args => [&Net::DBus::Binding::Watch::WRITABLE]),
 			 $watch->is_enabled);
     }
-#    $self->add_exception($watch->get_fileno, $watch, 
-#			 Net::DBus::Callback->new(object => $watch, 
-#					     method => "handle", 
-#					     args => [&Net::DBus::Binding::Watch::ERROR]), 
+#    $self->add_exception($watch->get_fileno, $watch,
+#			 Net::DBus::Callback->new(object => $watch,
+#					     method => "handle",
+#					     args => [&Net::DBus::Binding::Watch::ERROR]),
 #			 $watch->is_enabled);
-    
+
 }
 
 sub _manage_watch_off {
@@ -279,7 +279,7 @@ sub _manage_watch_off {
     my $object = shift;
     my $watch = shift;
     my $flags = $watch->get_flags;
-    
+
     if ($flags & &Net::DBus::Binding::Watch::READABLE) {
 	$self->remove_read($watch->get_fileno);
     }
@@ -294,7 +294,7 @@ sub _manage_watch_toggle {
     my $object = shift;
     my $watch = shift;
     my $flags = $watch->get_flags;
-    
+
     if ($flags & &Net::DBus::Binding::Watch::READABLE) {
 	$self->toggle_read($watch->get_fileno, $watch->is_enabled);
     }
@@ -348,9 +348,9 @@ not required in day-to-day use.
 
 sub step {
     my $self = shift;
-   
+
     my @callbacks = $self->_dispatch_hook();
-    
+
     foreach my $callback (@callbacks) {
 	$callback->invoke;
     }
@@ -359,15 +359,19 @@ sub step {
     my ($wi, $wic) = $self->_bits("write");
     my ($ei, $eic) = $self->_bits("exception");
     my $timeout = $self->_timeout($self->_now);
-    
+
     if (!$ric && !$wic && !$eic && !(defined $timeout)) {
 	$self->{running} = 0;
-	return;
     }
-        
+
+    # One of the hooks we ran might have requested shutdown
+    # so check here to avoid a undesirable wait in select()
+    # cf RT #39068
+    return unless $self->{running};
+
     my ($ro, $wo, $eo);
     my $n = select($ro=$ri,$wo=$wi,$eo=$ei, (defined $timeout ? ($timeout ? $timeout/1000 : 0) : undef));
-    
+
     @callbacks = ();
     if ($n) {
 	push @callbacks, $self->_dispatch_fd("read", $ro);
@@ -376,7 +380,7 @@ sub step {
     }
     push @callbacks, $self->_dispatch_timeout($self->_now);
     #push @callbacks, $self->_dispatch_hook();
-    
+
     foreach my $callback (@callbacks) {
 	$callback->invoke;
     }
@@ -386,9 +390,9 @@ sub step {
 
 sub _now {
     my $self = shift;
-    
+
     my @now = gettimeofday;
-    
+
     return $now[0] * 1000 + (($now[1] - ($now[1] % 1000)) / 1000);
 }
 
@@ -410,7 +414,7 @@ sub _bits {
 sub _timeout {
     my $self = shift;
     my $now = shift;
-    
+
     my $timeout;
     foreach (@{$self->{timeouts}}) {
 	next unless $_->{enabled};
@@ -428,14 +432,14 @@ sub _dispatch_fd {
     my $self = shift;
     my $type = shift;
     my $vec = shift;
-    
+
     my @callbacks;
     foreach my $fd (keys %{$self->{fds}->{$type}}) {
 	next unless $self->{fds}->{$type}->{$fd}->{enabled};
 
 	if (vec($vec, $fd, 1)) {
 	    my $rec = $self->{fds}->{$type}->{$fd};
-	    
+	
 	    push @callbacks, $self->{fds}->{$type}->{$fd}->{callback};
 	}
     }
@@ -446,13 +450,13 @@ sub _dispatch_fd {
 sub _dispatch_timeout {
     my $self = shift;
     my $now = shift;
-    
+
     my @callbacks;
     foreach my $timeout (@{$self->{timeouts}}) {
 	next unless $timeout->{enabled};
 	my $expired = $now - $timeout->{last_fired};
 
-	# Select typically returns a little (0-10 ms) before we 
+	# Select typically returns a little (0-10 ms) before we
 	# asked it for. (8 milliseconds seems reasonable balance
 	# between early timeouts & extra select calls
 	if ($expired >= ($timeout->{interval}-8)) {
@@ -480,11 +484,12 @@ sub _dispatch_hook {
 =item $reactor->add_read($fd, $callback[, $status]);
 
 Registers a file handle for monitoring of read
-events. The C<$callback> parameter specifies an
-instance of the C<Net::DBus::Callback> object to invoke
-each time an event occurs. The optional C<$status>
-parameter is a boolean value to specify whether the
-watch is initially enabled.
+events. The C<$callback> parameter specifies either
+a code reference to a subroutine, or an instance of
+the C<Net::DBus::Callback> object to invoke each time
+an event occurs. The optional C<$status> parameter is
+a boolean value to specify whether the watch is
+initially enabled.
 
 =cut
 
@@ -496,7 +501,8 @@ sub add_read {
 =item $reactor->add_write($fd, $callback[, $status]);
 
 Registers a file handle for monitoring of write
-events. The C<$callback> parameter specifies an
+events. The C<$callback> parameter specifies either
+a code reference to a subroutine, or an
 instance of the C<Net::DBus::Callback> object to invoke
 each time an event occurs. The optional C<$status>
 parameter is a boolean value to specify whether the
@@ -513,7 +519,8 @@ sub add_write {
 =item $reactor->add_exception($fd, $callback[, $status]);
 
 Registers a file handle for monitoring of exception
-events. The C<$callback> parameter specifies an
+events. The C<$callback> parameter specifies either
+a code reference to a subroutine, or  an
 instance of the C<Net::DBus::Callback> object to invoke
 each time an event occurs. The optional C<$status>
 parameter is a boolean value to specify whether the
@@ -530,7 +537,8 @@ sub add_exception {
 =item my $id = $reactor->add_timeout($interval, $callback, $status);
 
 Registers a new timeout to expire every C<$interval>
-milliseconds. The C<$callback> parameter specifies an
+milliseconds. The C<$callback> parameter specifies either
+a code reference to a subroutine, or an
 instance of the C<Net::DBus::Callback> object to invoke
 each time the timeout expires. The optional C<$status>
 parameter is a boolean value to specify whether the
@@ -544,15 +552,19 @@ sub add_timeout {
     my $self = shift;
     my $interval = shift;
     my $callback = shift;
-    my $enabled = shift;    
+    my $enabled = shift;
     $enabled = 1 unless defined $enabled;
+
+    if (ref($callback) eq "CODE") {
+	$callback = Net::DBus::Callback->new(method => $callback);
+    }
 
     my $key;
     for (my $i = 0 ; $i <= $#{$self->{timeouts}} && !(defined $key); $i++) {
 	$key = $i unless defined $self->{timeouts}->[$i];
     }
     $key = $#{$self->{timeouts}}+1 unless defined $key;
-    
+
     $self->{timeouts}->[$key] = {
 	interval => $interval,
 	last_fired => $self->_now,
@@ -574,8 +586,8 @@ the C<$id> parameter.
 sub remove_timeout {
     my $self = shift;
     my $key = shift;
-    
-    die "no timeout active with key '$key'" 
+
+    die "no timeout active with key '$key'"
 	unless defined $self->{timeouts}->[$key];
 
     $self->{timeouts}->[$key] = undef;
@@ -596,7 +608,7 @@ sub toggle_timeout {
     my $self = shift;
     my $key = shift;
     my $enabled = shift;
-    
+
     $self->{timeouts}->[$key]->{enabled} = $enabled;
     $self->{timeouts}->[$key]->{interval} = shift if @_;
 }
@@ -606,7 +618,8 @@ sub toggle_timeout {
 
 Registers a new hook to be fired on each iteration
 of the event loop. The C<$callback> parameter
-specifies an instance of the C<Net::DBus::Callback>
+specifies  either a code reference to a subroutine, or
+an instance of the C<Net::DBus::Callback>
 class to invoke. The C<$status> parameter determines
 whether the hook is initially enabled, or disabled.
 The return parameter is a unique id which should
@@ -617,9 +630,13 @@ be used to later remove, or disable the hook.
 sub add_hook {
     my $self = shift;
     my $callback = shift;
-    my $enabled = shift;    
+    my $enabled = shift;
     $enabled = 1 unless defined $enabled;
-    
+
+    if (ref($callback) eq "CODE") {
+	$callback = Net::DBus::Callback->new(method => $callback);
+    }
+
     my $key;
     for (my $i = 0 ; $i <= $#{$self->{hooks}} && !(defined $key); $i++) {
 	$key = $i unless defined $self->{hooks}->[$i];
@@ -645,15 +662,15 @@ by C<$id>.
 sub remove_hook {
     my $self = shift;
     my $key = shift;
-    
-    die "no hook present with key '$key'" 
+
+    die "no hook present with key '$key'"
 	unless defined $self->{hooks}->[$key];
 
 
     $self->{hooks}->[$key] = undef;
 }
 
-=item $reactor->toggle_hook($id[, $status])
+=item $reactor->toggle_hook($id, $status)
 
 Updates the status of the previously registered
 hook identified by C<$id>. The C<$status> parameter
@@ -666,7 +683,7 @@ sub toggle_hook {
     my $self = shift;
     my $key = shift;
     my $enabled = shift;
-    
+
     $self->{hooks}->[$key]->{enabled} = $enabled;
 }
 
@@ -677,7 +694,11 @@ sub _add {
     my $callback = shift;
     my $enabled = shift;
     $enabled = 1 unless defined $enabled;
-    
+
+    if (ref($callback) eq "CODE") {
+	$callback = Net::DBus::Callback->new(method => $callback);
+    }
+
     $self->{fds}->{$type}->{$fd} = {
 	callback => $callback,
 	enabled => $enabled
@@ -714,7 +735,7 @@ sub _remove {
     my $type = shift;
     my $fd = shift;
 
-    die "no handle ($type) active with fd '$fd'" 
+    die "no handle ($type) active with fd '$fd'"
 	unless exists $self->{fds}->{$type}->{$fd};
 
     delete $self->{fds}->{$type}->{$fd};
@@ -773,6 +794,6 @@ Daniel Berrange E<lt>dan@berrange.comE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright 2004-2011 by Daniel Berrange
 
 =cut

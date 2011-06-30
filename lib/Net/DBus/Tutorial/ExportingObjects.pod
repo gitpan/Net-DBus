@@ -28,7 +28,7 @@ Net::DBus::Tutorial::ExportingObjects - tutorials on providing a DBus service
 
 This document provides a tutorial on providing a DBus service using the
 Perl Net::DBus application bindings. This examples in this document
-will be based on the code from the L<Music::Player> distribution, which 
+will be based on the code from the L<Music::Player> distribution, which
 is a simple DBus service providing a music track player.
 
 =head1 CREATING AN OBJECT
@@ -52,18 +52,18 @@ within the constructor:
       my $class = shift;
       my $service = shift;
       my $self = $class->SUPER::new($service, "/music/player/manager");
-      
+
       bless $self, $class;
-      
+
       return $self;
   }
 
   1;
 
 
-Now, as mentioned, the manager with handle a number of different 
+Now, as mentioned, the manager with handle a number of different
 player backends. So we need to provide methods for registering
-new backends, and querying for backends capable of playing a 
+new backends, and querying for backends capable of playing a
 particular file type. So modifying the above code we add a hash
 table in the constructor, to store the backends:
 
@@ -74,9 +74,9 @@ table in the constructor, to store the backends:
       my $self = $class->SUPER::new($service, "/music/player/manager");
 
       $self->{backends} = {};
-      
+
       bless $self, $class;
-      
+
       return $self;
   }
 
@@ -88,8 +88,8 @@ a path under which to register the backend. We use the C<get_service>
 method to retreieve a reference to the service the manager is
 attached to, and attach the player backend to this same service:
 When a method on DBus object is invoked, the first parameter is
-the object reference (C<$self>), and the remainder are the 
-parameters provided to the method call. Thus writing a method 
+the object reference (C<$self>), and the remainder are the
+parameters provided to the method call. Thus writing a method
 implementation on a DBUs is really no different to normal object
 oriented Perl (cf L<perltoot>):
 
@@ -109,19 +109,19 @@ oriented Perl (cf L<perltoot>):
 
 Looking at this one might wonder what happens if the C<die>
 method is triggered. In such a scenario, rather than terminating
-the service process, the error will be caught and propagated back 
+the service process, the error will be caught and propagated back
 to the remote caller to deal with.
 
 The player backends provide a method C<get_track_types> which returns
-an array reference of the music track types they support. We can use 
-this method to provide an API to allow easy retrieval of a backend 
-for a particular track type. This method will return a path with which 
+an array reference of the music track types they support. We can use
+this method to provide an API to allow easy retrieval of a backend
+for a particular track type. This method will return a path with which
 the backend object can be accessed
 
   sub find_backend {
       my $self = shift;
       my $extension = shift;
-      
+
       foreach my $name (keys %{$self->{backends}}) {
          my $backend = $self->{backends}->{$name};
          foreach my $type (@{$backend->get_track_types}) {
@@ -130,14 +130,14 @@ the backend object can be accessed
             }
          }
       }
-      
+
       die "no backend for type $extension";
   }
 
 Lets take a quick moment to consider how this method would be used to
 play a music track. If you've not already done so, refresh your memory
-from L<Net::DBus::Tutorial::UsingObjects>. Now, we have an MP3 file 
-which we wish to play, so we search for the path to a backend, then 
+from L<Net::DBus::Tutorial::UsingObjects>. Now, we have an MP3 file
+which we wish to play, so we search for the path to a backend, then
 retrieve the object for it, and play the track:
 
   ...get the music player service...
@@ -152,7 +152,7 @@ retrieve the object for it, and play the track:
 =head1 PROVIDING INTROSPECTION DATA
 
 The code above is a complete working object, ready to be registered with
-a service, and since the parameters and return values for the two methods 
+a service, and since the parameters and return values for the two methods
 are both simple strings we could stop there. In some cases, however, one
 might want to be more specific about data types expected for parameters,
 for example signed vs unsigned integers. Adding explicit data typing also
@@ -163,7 +163,7 @@ service whom may be using a strongly typed language such as C.
 
 The first step in providing introspection data for a DBus object in Perl, is
 to specify the name of the interface provided by the object. This is typically
-a period separated string, by convention containing the domain name of the 
+a period separated string, by convention containing the domain name of the
 application as its first component. Since most Perl modules end up living on
 CPAN, one might use C<org.cpan> as the first component, followed by the package
 name of the module (replacing :: with .), eg C<org.cpan.music.player.manager>. If it is
@@ -212,16 +212,16 @@ a service. A service is nothing more than a well known name
 for a given API contract. A contract can be thought of as a
 definition of a list of object paths, and the corresponding
 interfaces they provide. So, someone else could come along a
-provide an alternate music player implementation using the 
+provide an alternate music player implementation using the
 Python or QT bindings for DBus, and if they provided the same
 set of object paths & interfaces, they could justifiably register
-the same service on the bus. 
+the same service on the bus.
 
 The L<Net::DBus::Service> module provides the means to register
 a service. Its constructor expects a reference to the bus object
 (an instance of L<Net::DBus>), along with the name of the service.
-As with interface names, the first component of a service name is 
-usually derived from a domain name, and then suffixed with the 
+As with interface names, the first component of a service name is
+usually derived from a domain name, and then suffixed with the
 name of the application, in our example forming C<org.cpan.Music.Player>.
 While some objects will be created on the fly during execution
 of the application, others are created upon initial startup. The
@@ -266,7 +266,7 @@ In the former one would use the C<session> or <system> methods on L<Net::DBus>
 to get a handle to the desired bus, while in the latter case, the C<find>
 method would be used. This applies a heuristic to determine the correct
 bus based on execution environment. In the case of the music player, either
-bus is relevant, so the code to connect the service to the bus would look 
+bus is relevant, so the code to connect the service to the bus would look
 like:
 
    use Net::DBus;
@@ -274,7 +274,7 @@ like:
    my $bus = Net::DBus->find;
    my $player = Music::Player->new($bus);
 
-With the service attached to the bus, it is merely neccessary to run 
+With the service attached to the bus, it is merely neccessary to run
 the main event processing loop to listen out for & handle incoming
 DBus messages. So the above code is modified to start a simple reactor:
 
@@ -288,14 +288,14 @@ DBus messages. So the above code is modified to start a simple reactor:
 
    exit 0;
 
-Saving this code into a script C</usr/bin/music-player.pl>, coding 
+Saving this code into a script C</usr/bin/music-player.pl>, coding
 is complete and the service ready for use by clients on the bus.
 
 =head1 SERVICE ACTIVATION
 
-One might now wonder how best to start the service, particularly 
+One might now wonder how best to start the service, particularly
 if it is a service capable of running on
-both the system and session buses. DBus has the answer in the 
+both the system and session buses. DBus has the answer in the
 concept of C<activation>. What happens is that when a client
 on the bus attempts to call a method, or register a signal
 handler against, a service not currently running, it will first
@@ -304,8 +304,8 @@ in this process merely need stick a simple service definition
 file into the directoy C</usr/share/dbus-1/services>. The file
 should be named to match the service name, with the file extension
 C<.service> appended. eg, C</usr/share/dbus-1/services/org.cpan.music.player.service>
-The file contains two keys, first the name of the service, and 
-second the name of the executable used to run the service, or in 
+The file contains two keys, first the name of the service, and
+second the name of the executable used to run the service, or in
 this case the Perl script. So, for our simple service the data
 file would contain:
 

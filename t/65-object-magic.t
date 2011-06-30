@@ -90,6 +90,10 @@ my $xml_expect = <<EOF;
       <arg type="s" direction="in"/>
       <arg type="v" direction="out"/>
     </method>
+    <method name="GetAll">
+      <arg type="s" direction="in"/>
+      <arg type="a{sv}" direction="out"/>
+    </method>
     <method name="Set">
       <arg type="s" direction="in"/>
       <arg type="s" direction="in"/>

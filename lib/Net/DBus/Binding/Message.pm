@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -166,11 +166,11 @@ sub new {
     my %params = @_;
     my $self = {};
 
-    $self->{message} = exists $params{message} ? $params{message} : 
+    $self->{message} = exists $params{message} ? $params{message} :
 	(Net::DBus::Binding::Message::_create(exists $params{type} ? $params{type} : die "type parameter is required"));
 
     bless $self, $class;
-    
+
     if ($class eq "Net::DBus::Binding::Message") {
 	$self->_specialize;
     }
@@ -180,7 +180,7 @@ sub new {
 
 sub _specialize {
     my $self = shift;
-    
+
     my $type = $self->get_type;
     if ($type == &Net::DBus::Binding::Message::MESSAGE_TYPE_METHOD_CALL) {
 	bless $self, "Net::DBus::Binding::Message::MethodCall";
@@ -217,7 +217,7 @@ an empty string if there is no applicable interface for this message.
 
 sub get_interface {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_interface;
 }
 
@@ -230,7 +230,7 @@ empty string if there is no applicable object for this message.
 
 sub get_path {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_path;
 }
 
@@ -244,7 +244,7 @@ the message is being broadcast to all clients.
 
 sub get_destination {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_destination;
 }
 
@@ -256,7 +256,7 @@ Retireves the unique name of the client sending the message
 
 sub get_sender {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_sender;
 }
 
@@ -271,7 +271,7 @@ is yet to be sent.
 
 sub get_serial {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_serial;
 }
 
@@ -284,7 +284,7 @@ while for signals, retrieves the name of the signal.
 
 sub get_member {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_member;
 }
 
@@ -297,7 +297,7 @@ packed into the body of the message.
 
 sub get_signature {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_signature;
 }
 
@@ -337,7 +337,7 @@ an instance of the C<Net::DBus::Binding::Iterator> class.
 sub iterator {
     my $self = shift;
     my $append = @_ ? shift : 0;
-    
+
     if ($append) {
 	return Net::DBus::Binding::Message::_iterator_append($self->{message});
     } else {
@@ -348,13 +348,13 @@ sub iterator {
 =item $boolean = $msg->get_no_reply()
 
 Gets the flag indicating whether the message is expecting
-a reply to be sent. 
+a reply to be sent.
 
 =cut
 
 sub get_no_reply {
     my $self = shift;
-    
+
     return $self->{message}->dbus_message_get_no_reply;
 }
 
@@ -371,13 +371,13 @@ is reduced by removing the need for the client to wait
 sub set_no_reply {
     my $self = shift;
     my $flag = shift;
-    
+
     $self->{message}->dbus_message_set_no_reply($flag);
 }
 
 =item my @values = $msg->get_args_list
 
-De-marshall all the values in the body of the message, using the 
+De-marshall all the values in the body of the message, using the
 message signature to identify data types. The values are returned
 as a list.
 
@@ -385,8 +385,8 @@ as a list.
 
 sub get_args_list {
     my $self = shift;
-    
-    my @ret;    
+
+    my @ret;
     my $iter = $self->iterator;
     if ($iter->get_arg_type() != &Net::DBus::Binding::Message::TYPE_INVALID) {
 	do {
@@ -409,7 +409,7 @@ the L<Net::DBus::Binding::Iterator> object should be used instead.
 sub append_args_list {
     my $self = shift;
     my @args = @_;
-    
+
     my $iter = $self->iterator(1);
     foreach my $arg (@args) {
 	$iter->append($arg);
@@ -447,16 +447,16 @@ sub AUTOLOAD {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Server>, L<Net::DBus::Binding::Connection>, L<Net::DBus::Binding::Message::Signal>, L<Net::DBus::Binding::Message::MethodCall>, L<Net::DBus::Binding::Message::MethodReturn>, L<Net::DBus::Binding::Message::Error>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Server>, L<Net::DBus::Binding::Connection>, L<Net::DBus::Binding::Message::Signal>, L<Net::DBus::Binding::Message::MethodCall>, L<Net::DBus::Binding::Message::MethodReturn>, L<Net::DBus::Binding::Message::Error>
 
 =cut

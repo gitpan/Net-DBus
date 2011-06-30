@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -122,7 +122,7 @@ otherwise a positive value is returned.
 
 sub is_connected {
     my $self = shift;
-    
+
     return $self->{connection}->dbus_connection_get_is_connected();
 }
 
@@ -136,7 +136,7 @@ returned.
 
 sub is_authenticated {
     my $self = shift;
-    
+
     return $self->{connection}->dbus_connection_get_is_authenticated();
 }
 
@@ -152,7 +152,7 @@ explicitly disconnect.
 
 sub disconnect {
     my $self = shift;
-    
+
     $self->{connection}->dbus_connection_disconnect();
 }
 
@@ -166,7 +166,7 @@ the application event loop.
 
 sub flush {
     my $self = shift;
-    
+
     $self->{connection}->dbus_connection_flush();
 }
 
@@ -175,7 +175,7 @@ sub flush {
 
 Queues a message up for sending to the remote host.
 The data will be sent asynchronously as the applications
-event loop determines there is space in the outgoing 
+event loop determines there is space in the outgoing
 socket send buffer. To force immediate sending of the
 data, follow this method will a call to C<flush>. This
 method will return the serial number of the message,
@@ -253,7 +253,7 @@ loop where data has been read from the incoming socket.
 
 sub dispatch {
     my $self = shift;
-    
+
     $self->{connection}->_dispatch();
 }
 
@@ -263,7 +263,7 @@ sub dispatch {
 Temporarily removes the first message from the incoming
 message queue. No other thread may access the message
 while it is 'borrowed', so it should be replaced in the
-queue with the C<return_message> method, or removed 
+queue with the C<return_message> method, or removed
 permanently with th C<steal_message> method as soon as
 is practical.
 
@@ -271,7 +271,7 @@ is practical.
 
 sub borrow_message {
     my $self = shift;
-    
+
     my $msg = $self->{connection}->dbus_connection_borrow_message();
     return $self->make_raw_message($msg);
 }
@@ -279,7 +279,7 @@ sub borrow_message {
 =item $con->return_message($msg)
 
 Replaces a previously borrowed message in the incoming
-message queue for subsequent dispatch to registered 
+message queue for subsequent dispatch to registered
 message handlers.
 
 =cut
@@ -287,7 +287,7 @@ message handlers.
 sub return_message {
     my $self = shift;
     my $msg = shift;
-    
+
     $self->{connection}->dbus_connection_return_message($msg->{message});
 }
 
@@ -303,7 +303,7 @@ be run for this message.
 sub steal_message {
     my $self = shift;
     my $msg = shift;
-    
+
     $self->{connection}->dbus_connection_steal_borrowed_message($msg->{message});
 }
 
@@ -319,14 +319,14 @@ don't want to be calling this method.
 
 sub pop_message {
     my $self = shift;
-    
+
     my $msg = $self->{connection}->dbus_connection_pop_message();
     return $self->make_raw_message($msg);
 }
 
 =item $con->set_watch_callbacks(\&add_watch, \&remove_watch, \&toggle_watch);
 
-Register a set of callbacks for adding, removing & updating 
+Register a set of callbacks for adding, removing & updating
 watches in the application's event loop. Each parameter
 should be a code reference, which on each invocation, will be
 supplied with two parameters, the connection object and the
@@ -351,7 +351,7 @@ sub set_watch_callbacks {
 
 =item $con->set_timeout_callbacks(\&add_timeout, \&remove_timeout, \&toggle_timeout);
 
-Register a set of callbacks for adding, removing & updating 
+Register a set of callbacks for adding, removing & updating
 timeouts in the application's event loop. Each parameter
 should be a code reference, which on each invocation, will be
 supplied with two parameters, the connection object and the
@@ -416,7 +416,7 @@ sub unregister_object_path {
 
 =item $con->register_fallback($path, \&handler)
 
-Registers a handler for messages whose path starts with 
+Registers a handler for messages whose path starts with
 the prefix specified in the C<$path> parameter. The supplied
 code reference will be invoked with two parameters, the
 connection object on which the message was received,
@@ -453,7 +453,7 @@ is specified in bytes.
 sub set_max_message_size {
     my $self = shift;
     my $size = shift;
-    
+
     $self->{connection}->dbus_connection_set_max_message_size($size);
 }
 
@@ -467,7 +467,7 @@ in bytes.
 
 sub get_max_message_size {
     my $self = shift;
-    
+
     return $self->{connection}->dbus_connection_get_max_message_size;
 }
 
@@ -485,7 +485,7 @@ this threshold by at most the size of a single message.
 sub set_max_received_size {
     my $self = shift;
     my $size = shift;
-    
+
     $self->{connection}->dbus_connection_set_max_received_size($size);
 }
 
@@ -498,7 +498,7 @@ The returned size is measured in bytes.
 
 sub get_max_received_size {
     my $self = shift;
-    
+
     return $self->{connection}->dbus_connection_get_max_received_size;
 }
 
@@ -516,7 +516,7 @@ should be performed.
 sub add_filter {
     my $self = shift;
     my $callback = shift;
-    
+
     $self->{connection}->_add_filter($callback);
 }
 
@@ -525,7 +525,7 @@ sub _message_filter {
     my $self = shift;
     my $rawmsg = shift;
     my $code = shift;
-    
+
     my $msg = $self->make_raw_message($rawmsg);
     return &$code($self, $msg);
 }
@@ -542,7 +542,7 @@ will be cast to the appropriate subclass of L<Net::DBus::Binding::Message>.
 sub make_raw_message {
     my $self = shift;
     my $rawmsg = shift;
-    
+
     return Net::DBus::Binding::Message->new(message => $rawmsg);
 }
 
@@ -640,16 +640,16 @@ sub make_signal_message {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Server>, L<Net::DBus::Binding::Bus>, L<Net::DBus::Binding::Message::Signal>, L<Net::DBus::Binding::Message::MethodCall>, L<Net::DBus::Binding::Message::MethodReturn>, L<Net::DBus::Binding::Message::Error>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Server>, L<Net::DBus::Binding::Bus>, L<Net::DBus::Binding::Message::Signal>, L<Net::DBus::Binding::Message::MethodCall>, L<Net::DBus::Binding::Message::MethodReturn>, L<Net::DBus::Binding::Message::Error>
 
 =cut

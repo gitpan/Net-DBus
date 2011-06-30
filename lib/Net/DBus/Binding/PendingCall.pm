@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2006 Daniel P. Berrange
+# Copyright (C) 2006-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -35,7 +35,7 @@ Net::DBus::Binding::PendingCall - A handler for pending method replies
 
 =head1 DESCRIPTION
 
-This object is used when it is neccessary to make asynchronous method
+This object is used when it is necessary to make asynchronous method
 calls. It provides the means to be notified when the reply is finally
 received.
 
@@ -109,7 +109,7 @@ sub get_completed {
 
 =item $call->block
 
-Block the caller until the reply is recieved or a timeout
+Block the caller until the reply is received or a timeout
 occurrs.
 
 =cut
@@ -162,16 +162,16 @@ sub set_notify {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Connection>, L<Net::DBus::Binding::Message>, L<Net::DBus::ASyncReply>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2006 by Daniel Berrange
+Copyright (C) 2006-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Connection>, L<Net::DBus::Binding::Message>, L<Net::DBus::ASyncReply>
 
 =cut

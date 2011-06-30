@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -70,7 +70,7 @@ sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
     my %params = @_;
-    
+
     my $connection;
     if (defined $params{type}) {
 	if ($params{private}) {
@@ -88,7 +88,7 @@ sub new {
     } else {
 	die "either type or address parameter is required";
     }
-	  
+	
     my $self = $class->SUPER::new(%params, connection => $connection);
 
     bless $self, $class;
@@ -99,7 +99,7 @@ sub new {
 
 =item $bus->request_name($service_name)
 
-Send a request to the bus registering the well known name 
+Send a request to the bus registering the well known name
 specified in the C<$service_name> parameter. If another client
 already owns the name, registration will be queued up, pending
 the exit of the other client.
@@ -109,7 +109,7 @@ the exit of the other client.
 sub request_name {
     my $self = shift;
     my $service_name = shift;
-    
+
     $self->{connection}->dbus_bus_request_name($service_name);
 }
 
@@ -138,7 +138,7 @@ matching broadcast signals to routed to this client.
 sub add_match {
     my $self = shift;
     my $rule = shift;
-    
+
     $self->{connection}->dbus_bus_add_match($rule);
 }
 
@@ -152,7 +152,7 @@ further broadcast signals being routed to this client
 sub remove_match {
     my $self = shift;
     my $rule = shift;
-    
+
     $self->{connection}->dbus_bus_remove_match($rule);
 }
 
@@ -187,16 +187,16 @@ sub AUTOLOAD {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Connection>, L<Net::DBus>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004-2005 by Daniel Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Connection>, L<Net::DBus>
 
 =cut

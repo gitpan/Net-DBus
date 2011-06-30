@@ -1,3 +1,17 @@
+
+New in 1.0.0:
+
+ - Updated to require minimum dbus >= 1.0.0
+ - Automatically track change in ownership of bus names
+   for signal handlers
+ - Strict validation of method invocation against introspection
+   data on exported objects
+ - Improved error messages for invalid interfaces
+ - Add API for disconnecting an object from a signal
+ - Implement GetAll methods on properties interface
+ - Allow leading _ in interface names
+ - Other minor fixes
+
 Changes since 0.33.5
 
  - Fix introspection XML handling when exporting objects with child

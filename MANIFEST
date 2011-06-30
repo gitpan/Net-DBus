@@ -15,6 +15,7 @@ examples/example-signal-emitter.pl
 examples/example-signal-receiver.pl
 examples/lshal.pl
 examples/notification.pl
+examples/strict-exports.pl
 lib/Net/DBus.pm
 lib/Net/DBus/Annotation.pm
 lib/Net/DBus/ASyncReply.pm

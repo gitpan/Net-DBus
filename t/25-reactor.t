@@ -65,6 +65,7 @@ $reactor->add_write($w2,
 
 $reactor->add_hook(Net::DBus::Callback->new(method => \&hook));
 
+$reactor->{running} = 1;
 $reactor->step;
 
 ok($r1c == 1, "read one byte a");
@@ -74,12 +75,14 @@ ok($hookc == 1, "hook 1\n");
 write $w1, "11", 2;
 write $w2, "1", 1;
 
+$reactor->{running} = 1;
 $reactor->step;
 
 ok($r1c == 2, "read 2 byte a");
 ok($r2c == 1, "read one byte b");
 ok($hookc == 2, "hook 2\n");
 
+$reactor->{running} = 1;
 $reactor->step;
 
 ok($r1c == 3, "read 2 byte a");
@@ -88,6 +91,7 @@ ok($hookc == 3, "hook 3\n");
 $reactor->toggle_write($w1, 1);
 $reactor->toggle_write($w2, 1);
 
+$reactor->{running} = 1;
 $reactor->step;
 
 ok($w1c == 1, "write 1 byte a");

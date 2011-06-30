@@ -22,10 +22,9 @@ sub new {
     my $class = shift;
     my $service = shift;
     my $self = $class->SUPER::new($service, "/org/designfu/TestService/object");
-				  
-    
+
     bless $self, $class;
-    
+
     return $self;
 }
 

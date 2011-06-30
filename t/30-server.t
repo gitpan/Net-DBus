@@ -29,6 +29,7 @@ my $client = Net::DBus::Binding::Connection->new(address => "unix:path=/tmp/dbus
 ok ($client->is_connected, "client connected");
 $reactor->manage($client);
 
+$reactor->{running} = 1;
 $reactor->step;
 
 ok (defined $incoming, "incoming");

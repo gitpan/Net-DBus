@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -46,7 +46,7 @@ Net::DBus::Test::MockConnection - Fake a connection to the bus unit testing
 
 This object provides a fake implementation of the L<Net::DBus::Binding::Connection>
 enabling a pure 'in-memory' message bus to be mocked up. This is intended to
-facilitate creation of unit tests for services which would otherwise need to 
+facilitate creation of unit tests for services which would otherwise need to
 call out to other object on a live message bus. It is used as a companion to
 the L<Net::DBus::Test::MockObject> module which is how fake objects are to be
 provided on the fake bus.
@@ -81,15 +81,15 @@ get a handle to a test bus.
 sub new {
     my $class = shift;
     my $self = {};
-    
+
     $self->{replies} = [];
     $self->{signals} = [];
     $self->{objects} = {};
     $self->{objectTrees} = {};
     $self->{filters} = [];
-    
+
     bless $self, $class;
-    
+
     return $self;
 }
 
@@ -100,7 +100,7 @@ a method call, it will be dispatched straight to any corresponding
 mock object registered. If the mesage is an error or method return
 it will be made available as a return value for the C<send_with_reply_and_block>
 method. If the message is a signal it will be queued up for processing
-by the C<dispatch> method. 
+by the C<dispatch> method.
 
 =cut
 
@@ -124,7 +124,7 @@ sub send {
 
 =item $bus->request_name($service_name)
 
-Pretend to send a request to the bus registering the well known 
+Pretend to send a request to the bus registering the well known
 name specified in the C<$service_name> parameter. In reality
 this is just a no-op giving the impression that the name was
 successfully registered.
@@ -135,7 +135,7 @@ sub request_name {
     my $self = shift;
     my $name = shift;
     my $flags = shift;
-    
+
     # XXX do we care about this for test cases? probably not...
     # ....famous last words
 }
@@ -155,13 +155,13 @@ sub send_with_reply_and_block {
     my $self = shift;
     my $msg = shift;
     my $timeout = shift;
-    
+
     $self->send($msg);
-    
+
     if ($#{$self->{replies}} == -1) {
 	die "no reply for " . $msg->get_path . "->" . $msg->get_member . " received within timeout";
     }
-    
+
     my $reply = shift @{$self->{replies}};
     if ($#{$self->{replies}} != -1) {
 	die "too many replies received";
@@ -188,7 +188,7 @@ pending signals to be dealt with.
 
 sub dispatch {
     my $self = shift;
-    
+
     my @signals = @{$self->{signals}};
     $self->{signals} = [];
     foreach my $msg (@signals) {
@@ -212,7 +212,7 @@ should be performed.
 sub add_filter {
     my $self = shift;
     my $cb = shift;
-    
+
     push @{$self->{filters}}, $cb;
 }
 
@@ -228,8 +228,8 @@ successfully registered.
 sub add_match {
     my $self = shift;
     my $rule = shift;
-    
-    # XXX do we need to implement anything ? probably not 
+
+    # XXX do we need to implement anything ? probably not
     # nada
 }
 
@@ -245,8 +245,8 @@ successfully unregistered.
 sub remove_match {
     my $self = shift;
     my $rule = shift;
-    
-    # XXX do we need to implement anything ? probably not 
+
+    # XXX do we need to implement anything ? probably not
     # nada
 }
 
@@ -266,13 +266,13 @@ sub register_object_path {
     my $self = shift;
     my $path = shift;
     my $code = shift;
-    
+
     $self->{objects}->{$path} = $code;
 }
 
 =item $con->register_fallback($path, \&handler)
 
-Registers a handler for messages whose path starts with 
+Registers a handler for messages whose path starts with
 the prefix specified in the C<$path> parameter. The supplied
 code reference will be invoked with two parameters, the
 connection object on which the message was received,
@@ -285,7 +285,7 @@ sub register_fallback {
     my $self = shift;
     my $path = shift;
     my $code = shift;
-    
+
     $self->{objects}->{$path} = $code;
     $self->{objectTrees}->{$path} = $code;
 }
@@ -301,7 +301,7 @@ or C<register_fallback> methods.
 sub unregister_object_path {
     my $self = shift;
     my $path = shift;
-    
+
     delete $self->{objects}->{$path};
 }
 
@@ -445,16 +445,20 @@ sub make_signal_message {
 
 =head1 BUGS
 
-It doesn't completely replicate the API of L<Net::DBus::Binding::Connection>, 
+It doesn't completely replicate the API of L<Net::DBus::Binding::Connection>,
 merely enough to make the high level bindings work in a test scenario.
+
+=head1 AUTHOR
+
+Daniel P. Berrange
+
+=head1 COPYRIGHT
+
+Copyright (C) 2005-2009 Daniel P. Berrange
 
 =head1 SEE ALSO
 
 L<Net::DBus>, L<Net::DBus::Test::MockObject>, L<Net::DBus::Binding::Connection>,
 L<http://www.mockobjects.com/Faq.html>
-
-=head1 COPYRIGHT
-
-Copyright 2005 Daniel Berrange <dan@berrange.com>
 
 =cut

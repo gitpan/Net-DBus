@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -62,7 +62,7 @@ may be of use.
 
 =head1 METHODS
 
-=over 
+=over
 
 =cut
 
@@ -118,7 +118,7 @@ otherwise a positive value is returned.
 
 sub is_connected {
     my $self = shift;
-    
+
     return $self->{server}->dbus_server_get_is_connected();
 }
 
@@ -133,14 +133,14 @@ explicitly disconnect.
 
 sub disconnect {
     my $self = shift;
-    
+
     return $self->{server}->dbus_server_disconnect();
 }
 
 
 =item $server->set_watch_callbacks(\&add_watch, \&remove_watch, \&toggle_watch);
 
-Register a set of callbacks for adding, removing & updating 
+Register a set of callbacks for adding, removing & updating
 watches in the application's event loop. Each parameter
 should be a code reference, which on each invocation, will be
 supplied with two parameters, the server object and the
@@ -166,7 +166,7 @@ sub set_watch_callbacks {
 
 =item $server->set_timeout_callbacks(\&add_timeout, \&remove_timeout, \&toggle_timeout);
 
-Register a set of callbacks for adding, removing & updating 
+Register a set of callbacks for adding, removing & updating
 timeouts in the application's event loop. Each parameter
 should be a code reference, which on each invocation, will be
 supplied with two parameters, the server object and the
@@ -217,16 +217,16 @@ sub set_connection_callback {
 
 =back
 
-=head1 SEE ALSO
-
-L<Net::DBus::Binding::Connection>, L<Net::DBus::Binding::Bus>, L<Net::DBus::Binding::Message::Signal>, L<Net::DBus::Binding::Message::MethodCall>, L<Net::DBus::Binding::Message::MethodReturn>, L<Net::DBus::Binding::Message::Error>
-
 =head1 AUTHOR
 
-Daniel Berrange E<lt>dan@berrange.comE<gt>
+Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright 2004 by Daniel Berrange
+Copyright (C) 2004-2011 Daniel P. Berrange
+
+=head1 SEE ALSO
+
+L<Net::DBus::Binding::Connection>, L<Net::DBus::Binding::Bus>, L<Net::DBus::Binding::Message::Signal>, L<Net::DBus::Binding::Message::MethodCall>, L<Net::DBus::Binding::Message::MethodReturn>, L<Net::DBus::Binding::Message::Error>
 
 =cut

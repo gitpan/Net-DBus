@@ -9,9 +9,7 @@ project website at:
 
   http://www.freedesktop.org/software/dbus/
 
-This version operates against DBus 0.33, through 0.60, and 
-possibly later versions, if there have been no serious API 
-changes.
+This version operates against DBus 1.00, and later
 
 INSTALLATION
 ------------
@@ -93,18 +91,18 @@ patch is as follows:
   * Rename your working directory to have '-new' 
     extension: 
 
-        mv DBus-0.33.3 DBus-0.33.3-new
+        mv DBus-1.0.0 DBus-1.0.0-new
 
   * Extract a pristine copy of the source:
 
-        gunzip -c DBus-0.33.3.tar.gz | tar xf -
-        mv DBus-0.33.3 DBus-0.33.3-orig
+        gunzip -c DBus-1.0.0.tar.gz | tar xf -
+        mv DBus-1.0.0 DBus-1.0.0-orig
 
   * Generate the patch:
 
-        diff -ruN DBus-0.33.3-orig DBus-0.33.3-new \
-          > DBus-0.33.3-[something].patch
-        gzip DBus-0.33.3-[something].patch
+        diff -ruN DBus-1.0.0-orig DBus-1.0.0-new \
+          > DBus-1.0.0-[something].patch
+        gzip DBus-1.0.0-[something].patch
 
 
 Send the resulting to .patch.gz file directly to 
@@ -113,7 +111,7 @@ Daniel Berrange <dan at berrange dot com>
 COPYRIGHT AND LICENCE
 ---------------------
 
-Copyright (C) 2004-2008 Daniel Berrange
+Copyright (C) 2004-2011 Daniel Berrange
 
 Net-DBus may be redistributed and/or modified under the terms of Perl itself.
 Either:

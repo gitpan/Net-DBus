@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -131,6 +131,7 @@ use Net::DBus::Exporter "org.freedesktop.DBus.Introspectable";
 dbus_method("Introspect", [], ["string"]);
 
 dbus_method("Get", ["string", "string"], [["variant"]], "org.freedesktop.DBus.Properties");
+dbus_method("GetAll", ["string"], [["dict", "string", ["variant"]]], "org.freedesktop.DBus.Properties");
 dbus_method("Set", ["string", "string", ["variant"]], [], "org.freedesktop.DBus.Properties");
 
 =item my $object = Net::DBus::Object->new($service, $path)
@@ -473,7 +474,8 @@ sub _dispatch {
     my $reply;
     my $method_name = $message->get_member;
     my $interface = $message->get_interface;
-    if ($interface eq "org.freedesktop.DBus.Introspectable") {
+    if ((defined $interface) &&
+	($interface eq "org.freedesktop.DBus.Introspectable")) {
 	if ($method_name eq "Introspect" &&
 	    $self->_introspector &&
 	    $ENABLE_INTROSPECT) {
@@ -482,13 +484,16 @@ sub _dispatch {
 
 	    $self->_introspector->encode($reply, "methods", $method_name, "returns", $xml);
 	}
-    } elsif ($interface eq "org.freedesktop.DBus.Properties") {
+    } elsif ((defined $interface) &&
+	     ($interface eq "org.freedesktop.DBus.Properties")) {
 	if ($method_name eq "Get") {
 	    $reply = $self->_dispatch_prop_read($connection, $message);
+	} elsif ($method_name eq "GetAll") {
+	    $reply = $self->_dispatch_all_prop_read($connection, $message);
 	} elsif ($method_name eq "Set") {
 	    $reply = $self->_dispatch_prop_write($connection, $message);
 	}
-    } elsif ($self->can($method_name)) {
+    } elsif ($self->_is_method_allowed($method_name)) {
 	my $ins = $self->_introspector;
 	my @ret = eval {
 	    my @args;
@@ -578,6 +583,43 @@ sub _dispatch_prop_read {
     }
 }
 
+sub _dispatch_all_prop_read {
+    my $self = shift;
+    my $connection = shift;
+    my $message = shift;
+
+    my $ins = $self->_introspector;
+
+    if (!$ins) {
+	return $connection->make_error_message($message,
+					       "org.freedesktop.DBus.Error.Failed",
+					       "no introspection data exported for properties");
+    }
+
+    my ($pinterface) = $ins->decode($message, "methods", "Get", "params");
+
+    my %values = ();
+    foreach my $pname ($ins->list_properties($pinterface)) {
+    	unless ($ins->is_property_readable($pinterface, $pname)) {
+		next; # skip write-only properties
+	}
+
+	$values{$pname} = eval {
+	    $self->$pname;
+	};
+	if ($@) {
+	    return $connection->make_error_message($message,
+						   "org.freedesktop.DBus.Error.Failed",
+						   "error reading '$pname' in interface '$pinterface': $@");
+	}
+    }
+
+    my $reply = $connection->make_method_return_message($message);
+
+    $self->_introspector->encode($reply, "methods", "Get", "returns", \%values);
+    return $reply;
+}
+
 sub _dispatch_prop_write {
     my $self = shift;
     my $connection = shift;
@@ -634,6 +676,28 @@ sub _introspector {
     return $self->{introspector};
 }
 
+sub _is_method_allowed {
+    my $self = shift;
+    my $method = shift;
+
+    # Disallow any method defined in this specific package, since these
+    # are all server-side helpers / internal methods
+    return 0 if __PACKAGE__->can($method);
+
+    # If this object instance doesn't have it defined, trivially can't
+    # allow it
+    return 0 unless $self->can($method);
+
+    my $ins = $self->_introspector;
+    if (defined $ins) {
+	# Finally do check against introspection data
+	return $ins->is_method_allowed($method);
+    }
+
+    # No introspector, so have to assume its allowed
+    return 1;
+}
+
 1;
 
 
@@ -641,13 +705,13 @@ sub _introspector {
 
 =back
 
-=head1 AUTHORS
+=head1 AUTHOR
 
 Daniel P. Berrange
 
 =head1 COPYRIGHT
 
-Copyright (C) 2005-2006 Daniel P. Berrange
+Copyright (C) 2005-2011 Daniel P. Berrange
 
 =head1 SEE ALSO
 

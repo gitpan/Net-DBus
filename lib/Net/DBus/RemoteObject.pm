@@ -1,6 +1,6 @@
 # -*- perl -*-
 #
-# Copyright (C) 2004-2006 Daniel P. Berrange
+# Copyright (C) 2004-2011 Daniel P. Berrange
 #
 # This program is free software; You can redistribute it and/or modify
 # it under the same terms as Perl itself. Either:
@@ -85,6 +85,8 @@ sub new {
     $self->{object_path}  = shift;
     $self->{interface} = @_ ? shift : undef;
     $self->{introspected} = 0;
+    $self->{signal_handlers} = {};
+    $self->{signal_id} = 0;
 
     bless $self, $class;
 
@@ -199,13 +201,15 @@ sub _introspector {
 }
 
 
-=item $object->connect_to_signal($name, $coderef);
+=item my $sigid = $object->connect_to_signal($name, $coderef);
 
 Connects a callback to a signal emitted by the object. The C<$name>
 parameter is the name of the signal within the object, and C<$coderef>
 is a reference to an anonymous subroutine. When the signal C<$name>
 is emitted by the remote object, the subroutine C<$coderef> will be
-invoked, and passed the parameters from the signal.
+invoked, and passed the parameters from the signal. A unique C<$sigid>
+will be returned, which can be later passed to C<disconnect_from_signal>
+to remove the handler
 
 =cut
 
@@ -240,23 +244,90 @@ sub connect_to_signal {
 	warn "signal $name in interface $interface on " . $self->get_object_path . " is deprecated";
     }
 
-    $self->get_service->
-	get_bus()->
-	_add_signal_receiver(sub {
-	    my $signal = shift;
-	    my $ins = $self->_introspector;
-	    my @params;
-	    if ($ins) {
-		@params = $ins->decode($signal, "signals", $signal->get_member, "params");
-	    } else {
-		@params = $signal->get_args_list;
-	    }
-	    &$code(@params);
-	},
-			     $name,
-			     $interface,
-			     $self->{service}->get_owner_name(),
-			     $self->{object_path});
+    my $cb = sub {
+	my $signal = shift;
+	my $ins = $self->_introspector;
+	my @params;
+	if ($ins) {
+	    @params = $ins->decode($signal, "signals", $signal->get_member, "params");
+	} else {
+	    @params = $signal->get_args_list;
+	}
+
+	foreach my $handler (@{$self->{signal_handlers}->{$signal->get_member}->{handlers}}) {
+	    my ($id, $cb) = @{$handler};
+	    &$cb(@params);
+	}
+    };
+    if (!exists $self->{signal_handlers}->{$name}) {
+	$self->{signal_handlers}->{$name} = { cb => $cb, handlers => [] };
+	$self->get_service->
+	    get_bus()->
+	    _add_signal_receiver($cb,
+				 $name,
+				 $interface,
+				 $self->{service}->get_service_name(),
+				 $self->{object_path});
+    }
+    my $sigid = ++$self->{signal_id};
+    push @{$self->{signal_handlers}->{$name}->{handlers}}, [$sigid, $code];
+    return $sigid;
+}
+
+
+=item $object->disconnect_from_signal($name, $sigid);
+
+Disconnects from a signal emitted by the object. The C<$name>
+parameter is the name of the signal within the object. The
+C<$sigid> must be the unique signal handler ID returned by
+a previous C<connect_to_signal> method call.
+
+=cut
+
+sub disconnect_from_signal {
+    my $self = shift;
+    my $name = shift;
+    my $sigid = shift;
+
+    my $ins = $self->_introspector;
+    my $interface = $self->{interface};
+    if (!$interface) {
+	if (!$ins) {
+	    die "no introspection data available for '" . $self->get_object_path .
+		"', and object is not cast to any interface";
+	}
+	my @interfaces = $ins->has_signal($name);
+
+	if ($#interfaces == -1) {
+	    die "no signal with name '$name' is exported in object '" .
+		$self->get_object_path . "'\n";
+	} elsif ($#interfaces > 0) {
+	    warn "signal with name '$name' is exported " .
+		"in multiple interfaces of '" . $self->get_object_path . "'" .
+		"connecting to first interface only\n";
+	}
+	$interface = $interfaces[0];
+    }
+
+    my @handlers;
+    foreach my $handler (@{$self->{signal_handlers}->{$name}->{handlers}}) {
+	my ($thissigid, $cb) = @{$handler};
+	if ($thissigid != $sigid) {
+	    push @handlers, $handler;
+	}
+    }
+    if (@handlers) {
+	$self->{signal_handlers}->{$name}->{handlers} = \@handlers;
+    } else {
+	$self->get_service->
+	    get_bus()->
+	    _remove_signal_receiver($self->{signal_handlers}->{$name}->{cb},
+				    $name,
+				    $interface,
+				    $self->{service}->get_service_name(),
+				    $self->{object_path});
+	delete $self->{signal_handlers}->{$name};
+    }
 }
 
 
@@ -413,7 +484,7 @@ Daniel Berrange <dan@berrange.com>
 
 =head1 COPYRIGHT
 
-Copright (C) 2004-2005, Daniel Berrange.
+Copright (C) 2004-2011, Daniel Berrange.
 
 =head1 SEE ALSO
 
